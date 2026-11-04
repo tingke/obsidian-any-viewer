@@ -47,6 +47,11 @@
   height: 14px;
 }
 
+.any-viewer-embed.has-width,
+.any-viewer-embed-frame.has-width {
+  max-width: 100%;
+}
+
 .any-viewer-header-title {
   flex: 1 1 auto;
   overflow: hidden;
@@ -84,6 +89,10 @@
 
 .any-viewer-stage.is-scrollable {
   overflow: auto;
+}
+
+.any-viewer-stage.no-scroll {
+  overflow: hidden;
 }
 
 .any-viewer-stage.fills {

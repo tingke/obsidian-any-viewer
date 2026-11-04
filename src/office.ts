@@ -28,10 +28,11 @@ export async function renderDocx(container: HTMLElement, data: ArrayBuffer): Pro
   });
 }
 
-/** Render a .pptx into `container` at the given slide width. */
-export function renderPptx(container: HTMLElement, data: ArrayBuffer, width: number): void {
+/** Render a .pptx into `container` with the given slide viewport size. */
+export function renderPptx(container: HTMLElement, data: ArrayBuffer, width: number, height: number): void {
   const wrap = container.createDiv({ cls: "any-viewer-pptx" });
-  const w = Math.max(320, Math.min(1280, Math.round(width) || 960));
-  const viewer = pptxInit(wrap, { width: w, height: Math.round((w * 9) / 16) });
+  const w = Math.max(320, Math.min(1600, Math.round(width) || 960));
+  const h = Math.max(180, Math.round(height) || Math.round((w * 9) / 16));
+  const viewer = pptxInit(wrap, { width: w, height: h });
   viewer.preview(data);
 }

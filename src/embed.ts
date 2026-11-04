@@ -7,35 +7,20 @@ import { renderSheet } from "./sheet";
 import { isNativeExt, openFileExternally } from "./util";
 
 export interface RenderIntoOptions {
-  /** Display width hint in px (from `![[file|300]]` / width attr): content is scaled to fit. */
+  /** Display width hint in px (from `![[file|300]]` / width attr): the card is sized to it. */
   widthHint?: number;
   /** Display height hint in px (from `![[file|300x200]]` / height attr): clamps embed height. */
   heightHint?: number;
   /** Slide width for pptx rendering (px). */
   pptxWidth?: number;
+  /** Slide viewport height for pptx rendering (px). */
+  pptxHeight?: number;
   /** Max height in px (embeds only; views fill the pane). */
   maxHeight?: number;
   /** Show filename header bar with actions. */
   showHeader?: boolean;
   /** Allow JavaScript inside embedded HTML files. */
   allowScripts?: boolean;
-}
-
-/** Scale rendered content (docx/sheet/pptx) down so it fits `target` px width. */
-function scaleStageContentToFit(stage: HTMLElement, target: number): void {
-  const content = stage.firstElementChild as HTMLElement | null;
-  if (!content) return;
-  const natural = Math.max(content.scrollWidth, content.getBoundingClientRect().width);
-  if (!natural || natural <= target + 1) {
-    stage.style.height = "";
-    return;
-  }
-  const scale = target / natural;
-  content.style.transformOrigin = "0 0";
-  content.style.transform = `scale(${scale})`;
-  // transform doesn't affect layout: compensate the stage height manually
-  const rect = content.getBoundingClientRect();
-  stage.style.height = `${Math.ceil(rect.height)}px`;
 }
 
 /** Render `file` (of the given kind) into `host`. Shared by embeds and the tab view. */
@@ -77,13 +62,13 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
-  // Width hint scales the content (like images); height hint clamps the embed.
+  // Width hint sizes the whole card; content keeps its natural size and scrolls.
   const effectiveHeight = opts.heightHint ?? opts.maxHeight;
-  if (effectiveHeight) {
-    stage.style.maxHeight = `${effectiveHeight}px`;
+  const isPptx = kind === "pptx";
+  if (!isPptx && (effectiveHeight || opts.widthHint)) {
+    if (effectiveHeight) stage.style.maxHeight = `${effectiveHeight}px`;
     stage.addClass("is-scrollable");
   }
-  if (opts.widthHint) stage.style.width = `${opts.widthHint}px`;
 
   if (kind === "card") {
     stage.appendChild(buildFileCard(app, file));
@@ -100,41 +85,30 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     const data = await app.vault.readBinary(file);
     loading.remove();
 
-    // docx/sheet/pptx render into a single scalable box so width hints can scale them
-    const scalable = (kind === "docx" || kind === "sheet" || kind === "pptx")
-      ? stage.createDiv({ cls: "any-viewer-scalable" })
-      : stage;
-
     if (kind === "docx") {
-      await renderDocx(scalable, data);
+      await renderDocx(stage, data);
     } else if (kind === "sheet") {
-      await renderSheet(scalable, file, data);
+      await renderSheet(stage, file, data);
     } else if (kind === "pptx") {
-      const width = opts.pptxWidth ?? opts.widthHint ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
-      renderPptx(scalable, data, width);
+      stage.addClass("no-scroll"); // the pptx viewer scrolls internally
+      const width = opts.pptxWidth ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
+      const height = opts.pptxHeight ?? Math.round((width * 9) / 16);
+      renderPptx(stage, data, width, height);
     } else if (kind === "html") {
-      let url: string | undefined;
+      let resourceUrl: string | undefined;
       const vault = app.vault as any;
       try {
-        if (typeof vault.getResourcePath === "function") url = vault.getResourcePath(file);
-        else if (typeof vault.adapter?.getResourcePath === "function") url = vault.adapter.getResourcePath(file.path);
+        if (typeof vault.getResourcePath === "function") resourceUrl = vault.getResourcePath(file);
+        else if (typeof vault.adapter?.getResourcePath === "function") resourceUrl = vault.adapter.getResourcePath(file.path);
       } catch (e) {
-        url = undefined;
+        resourceUrl = undefined;
       }
-      if (typeof url !== "string" || !url) {
-        url = URL.createObjectURL(new Blob([data], { type: "text/html" }));
-      }
-      renderHtmlFrame(stage, url, {
+      await renderHtmlFrame(stage, data, {
         allowScripts: opts.allowScripts ?? true,
-        height: effectiveHeight,
+        height: opts.heightHint,
         width: opts.widthHint,
-      });
-    }
-
-    if (opts.widthHint && (kind === "docx" || kind === "sheet" || kind === "pptx")) {
-      // wait for layout, then scale the rendered content to the requested width
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => scaleStageContentToFit(stage, opts.widthHint!));
+        maxHeight: opts.maxHeight,
+        resourceUrl,
       });
     }
   } catch (err) {
@@ -259,6 +233,10 @@ export class EmbedRenderer {
     const render = () => {
       span.empty();
       const frame = span.createDiv({ cls: "any-viewer-frame any-viewer-embed-frame" });
+      if (widthHint) {
+        frame.addClass("has-width");
+        frame.style.width = `${widthHint}px`;
+      }
       renderFileInto(app, frame, file, kind, {
         widthHint,
         heightHint,

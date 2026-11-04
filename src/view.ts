@@ -59,14 +59,16 @@ export class AnyViewerFileView extends FileView {
 
     const frame = this.contentEl.createDiv({ cls: "any-viewer-view-frame" });
 
-    // pptx needs a laid-out width; wait one frame before measuring
-    if (kind === "pptx") {
+    // pptx & html need a laid-out pane height; wait one frame before measuring
+    if (kind === "pptx" || kind === "html") {
       await new Promise((r) => requestAnimationFrame(() => r(null)));
       if (token !== this.currentRender) return;
     }
 
     await renderFileInto(app, frame, file, kind, {
       pptxWidth: Math.max(480, Math.min(1080, this.contentEl.clientWidth || 900)),
+      pptxHeight: Math.max(300, this.contentEl.clientHeight - 40 || 500),
+      heightHint: kind === "html" ? Math.max(300, this.contentEl.clientHeight - 40 || 500) : undefined,
       maxHeight: undefined,
       showHeader: true,
       allowScripts: s.htmlAllowScripts,
