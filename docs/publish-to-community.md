@@ -115,8 +115,8 @@ CI 会自动：构建 → 校验 tag/manifest/versions 一致性 → 把 `main.j
 
 - [x] CI/CD（tag → Release）
 - [x] GitHub 仓库 `tingke/obsidian-any-viewer`
-- [ ] 仓库公开（上架前执行 1.1）
-- [ ] LICENSE 文件
-- [ ] README 英文版
-- [ ] `.gitignore` 移除 `main.js`（或维持仅 Release 分发，在 PR 里说明）
-- [ ] 提交 PR 到 obsidianmd/obsidian-releases
+- [x] LICENSE 文件（MIT）
+- [x] README 英文版（中英双语）
+- [x] `.gitignore` 已移除 `main.js`（构建产物已入库，满足审核要求）
+- [ ] 仓库公开（上架前执行 1.1：`gh repo edit tingke/obsidian-any-viewer --visibility public`）
+- [ ] 提交 PR 到 obsidianmd/obsidian-releases（按第 3 节操作）
