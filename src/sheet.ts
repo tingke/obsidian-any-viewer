@@ -292,9 +292,12 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePal
       /* ignore */
     }
     const col = colgroup.createEl("col");
-    if (width && width > 0) col.style.width = `${Math.min(Math.round(width * 7 + 5), 400)}px`;
+    // explicit width, else Excel's default column width (~8.43 chars)
+    const charWidth = width && width > 0 ? width : ws.properties?.defaultColWidth ?? 8.43;
+    col.style.width = `${Math.min(Math.round(charWidth * 7 + 5), 400)}px`;
   }
 
+  const defaultRowHeightPt: number | undefined = ws.properties?.defaultRowHeight;
   const rows = new Map<number, any>();
   for (let r = 1; r <= rowCount; r++) {
     const tr = table.createEl("tr");
@@ -305,6 +308,7 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePal
       /* ignore */
     }
     if (height && height > 0) tr.style.height = `${Math.round(height * 1.333)}px`;
+    else if (defaultRowHeightPt && defaultRowHeightPt > 0) tr.style.minHeight = `${Math.round(defaultRowHeightPt * 1.333)}px`;
     rows.set(r, tr);
   }
 

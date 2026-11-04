@@ -111103,8 +111103,10 @@ function renderWorksheetExcelJS(content, ws, palette) {
     } catch (e) {
     }
     const col = colgroup.createEl("col");
-    if (width && width > 0) col.style.width = `${Math.min(Math.round(width * 7 + 5), 400)}px`;
+    const charWidth = width && width > 0 ? width : ws.properties?.defaultColWidth ?? 8.43;
+    col.style.width = `${Math.min(Math.round(charWidth * 7 + 5), 400)}px`;
   }
+  const defaultRowHeightPt = ws.properties?.defaultRowHeight;
   const rows = /* @__PURE__ */ new Map();
   for (let r = 1; r <= rowCount; r++) {
     const tr = table.createEl("tr");
@@ -111114,6 +111116,7 @@ function renderWorksheetExcelJS(content, ws, palette) {
     } catch (e) {
     }
     if (height && height > 0) tr.style.height = `${Math.round(height * 1.333)}px`;
+    else if (defaultRowHeightPt && defaultRowHeightPt > 0) tr.style.minHeight = `${Math.round(defaultRowHeightPt * 1.333)}px`;
     rows.set(r, tr);
   }
   for (let r = 1; r <= rowCount; r++) {

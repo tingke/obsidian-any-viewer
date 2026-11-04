@@ -2,7 +2,7 @@
 export function renderHtmlFrame(
   container: HTMLElement,
   src: string,
-  opts: { height?: number; allowScripts: boolean }
+  opts: { height?: number; width?: number; allowScripts: boolean }
 ): void {
   const sandbox = ["allow-forms", "allow-popups", "allow-modals"];
   if (opts.allowScripts) sandbox.push("allow-scripts");
@@ -16,5 +16,6 @@ export function renderHtmlFrame(
       referrerpolicy: "no-referrer",
     },
   });
+  if (opts.width) frame.style.width = `${opts.width}px`;
   if (opts.height) frame.style.height = `${opts.height}px`;
 }
