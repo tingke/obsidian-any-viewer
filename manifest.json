@@ -1,0 +1,9 @@
+{
+  "id": "any-viewer",
+  "name": "Any Viewer",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "在笔记中插入并预览任意类型文件：Word、Excel、PowerPoint、HTML、CSV 等，未知类型显示文件卡片，一键用系统应用打开。",
+  "author": "tingke",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,283 @@
+/* ===== Any Viewer — embeds & views ===== */
+
+/* neutralize Obsidian's default internal-embed styling on our embeds */
+.markdown-preview-view .internal-embed.any-viewer-embed,
+.markdown-rendered .internal-embed.any-viewer-embed,
+.mod-cm6 .internal-embed.any-viewer-embed {
+  padding: 0;
+  background: transparent;
+  font-style: normal;
+}
+
+.any-viewer-embed {
+  display: block;
+  width: 100%;
+  margin: 0.6em 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  background: var(--background-primary);
+}
+
+.any-viewer-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* header bar */
+.any-viewer-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-muted);
+}
+
+.any-viewer-header-icon {
+  display: flex;
+  color: var(--text-faint);
+}
+
+.any-viewer-header-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.any-viewer-header-title {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.any-viewer-header button {
+  box-shadow: none;
+  background: transparent;
+  height: auto;
+  padding: 2px;
+}
+
+.any-viewer-header button svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* content stage */
+.any-viewer-stage {
+  position: relative;
+  padding: 10px;
+  min-height: 0;
+}
+
+.any-viewer-stage.is-scrollable {
+  overflow: auto;
+}
+
+.any-viewer-stage.fills {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.any-viewer-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 0;
+  color: var(--text-faint);
+}
+
+.any-viewer-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-faint);
+}
+
+.any-viewer-error {
+  padding: 8px;
+  color: var(--text-error);
+  font-size: var(--font-ui-smaller);
+}
+
+/* docx (docx-preview) tweaks */
+.any-viewer-docx .docx-wrapper {
+  background: transparent;
+  padding: 0;
+  display: block;
+}
+
+.any-viewer-docx .docx-wrapper > section.docx {
+  box-shadow: none;
+  border: 1px solid var(--background-modifier-border);
+  margin-bottom: 0.75em;
+  border-radius: var(--radius-s);
+}
+
+/* spreadsheets */
+.any-viewer-sheet-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 0 8px;
+}
+
+.any-viewer-tab {
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  border-radius: var(--radius-s);
+  padding: 2px 10px;
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  box-shadow: none;
+  margin: 0;
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.any-viewer-tab:hover {
+  border-color: var(--interactive-accent);
+}
+
+.any-viewer-tab.is-active {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.any-viewer-sheet-content {
+  overflow: visible;
+}
+
+.any-viewer-sheet-content table {
+  border-collapse: collapse;
+  font-size: var(--font-ui-smaller);
+  margin: 0;
+}
+
+.any-viewer-sheet-content td,
+.any-viewer-sheet-content th {
+  border: 1px solid var(--background-modifier-border);
+  padding: 3px 8px;
+  white-space: pre;
+  min-width: 2.5em;
+}
+
+/* pptx */
+.any-viewer-pptx {
+  margin: 0 auto;
+  width: fit-content;
+}
+
+/* html iframe */
+.any-viewer-html-frame {
+  display: block;
+  width: 100%;
+  min-height: 200px;
+  border: 0;
+  background: #fff;
+  border-radius: var(--radius-s);
+}
+
+/* fallback file card */
+.any-viewer-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  cursor: pointer;
+  background: var(--background-primary);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.any-viewer-card:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
+.any-viewer-card-icon {
+  display: flex;
+  align-items: center;
+  color: var(--text-accent);
+}
+
+.any-viewer-card-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.any-viewer-card-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.any-viewer-card-name {
+  font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  word-break: break-all;
+  line-height: 1.3;
+}
+
+.any-viewer-card-meta {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
+  margin-top: 2px;
+}
+
+.any-viewer-card-actions {
+  display: flex;
+  align-items: center;
+}
+
+.any-viewer-card-btn {
+  box-shadow: none;
+}
+
+.any-viewer-card-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* full-pane view */
+.workspace-leaf-content[data-type="any-viewer-file"] .view-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.any-viewer-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.any-viewer-view-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-m);
+  margin: 8px;
+  overflow: hidden;
+  background: var(--background-primary);
+}
+
+.any-viewer-view .any-viewer-html-frame {
+  height: 100%;
+  flex: 1 1 auto;
+}
+
+.any-viewer-view .any-viewer-stage .any-viewer-html-frame {
+  height: 100%;
+}
