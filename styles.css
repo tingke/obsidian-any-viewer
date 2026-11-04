@@ -54,6 +54,15 @@
   white-space: nowrap;
 }
 
+.any-viewer-header-title.is-clickable {
+  cursor: pointer;
+}
+
+.any-viewer-header-title.is-clickable:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+
 .any-viewer-header button {
   box-shadow: none;
   background: transparent;

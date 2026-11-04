@@ -1,11 +1,65 @@
 import * as ExcelJSNS from "exceljs";
 import * as XLSX from "xlsx";
 import { TFile } from "obsidian";
+import * as JSZipNS from "jszip";
 
 const ExcelJS: any = (ExcelJSNS as any).default ?? ExcelJSNS;
+const JSZip: any = (JSZipNS as any).default ?? JSZipNS;
 
 const MAX_ROWS = 2000;
 const MAX_COLS = 80;
+
+/** Theme palette resolved from xl/theme/theme1.xml (index order: lt1,dk1,lt2,dk2,accent1..6). */
+type ThemePalette = (string | null)[];
+
+async function loadThemePalette(data: ArrayBuffer): Promise<ThemePalette> {
+  const fallback: ThemePalette = ["#FFFFFF", "#000000", "#E7E6E6", "#44546A", "#5B9BD5", "#ED7D31", "#A5A5A5", "#FFC000", "#4472C4", "#70AD47"];
+  try {
+    const zip = await JSZip.loadAsync(data);
+    const themeFile = zip.file(/xl\/theme\/theme\d+\.xml/)?.[0];
+    if (!themeFile) return fallback;
+    const xml = await themeFile.async("string");
+    const scheme = /<a:clrScheme[\s\S]*?<\/a:clrScheme>/.exec(xml)?.[0];
+    if (!scheme) return fallback;
+    const byName: Record<string, string> = {};
+    for (const m of scheme.matchAll(/<a:(dk1|lt1|dk2|lt2|accent[1-6])>([\s\S]*?)<\/a:\1>/g)) {
+      const srgb = /<a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(m[2])?.[1];
+      const sys = /<a:sysClr[^>]*lastClr="([0-9A-Fa-f]{6})"/.exec(m[2])?.[1];
+      byName[m[1]] = `#${(srgb ?? sys ?? "000000").toUpperCase()}`;
+    }
+    // Excel's theme color index order differs from the XML order:
+    // 0=lt1, 1=dk1, 2=lt2, 3=dk2, 4..9=accent1..6
+    return [byName.lt1, byName.dk1, byName.lt2, byName.dk2, byName.accent1, byName.accent2, byName.accent3, byName.accent4, byName.accent5, byName.accent6];
+  } catch (e) {
+    console.warn("[Any Viewer] theme palette extraction failed:", e);
+    return fallback;
+  }
+}
+
+/** Apply an OOXML tint to a hex color (positive = lighter, negative = darker). */
+function applyTint(hex: string, tint: number): string {
+  if (!tint) return hex;
+  const n = parseInt(hex.slice(1), 16);
+  const out = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+    const x = tint > 0 ? v + (255 - v) * tint : v * (1 + tint);
+    return Math.round(Math.max(0, Math.min(255, x)));
+  });
+  return `#${out.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** Resolve any xlsx color shape (argb / rgb / theme+tint / indexed) to CSS. */
+function resolveColor(color: any, palette: ThemePalette): string | null {
+  if (!color) return null;
+  const raw = typeof color === "string" ? color : color.argb ?? color.rgb;
+  if (typeof raw === "string" && /^[0-9A-Fa-f]{6,8}$/.test(raw)) {
+    return `#${(raw.length === 8 ? raw.slice(2) : raw).toUpperCase()}`;
+  }
+  if (color.theme !== undefined && color.theme !== null) {
+    const base = palette[color.theme];
+    if (base) return applyTint(base, typeof color.tint === "number" ? color.tint : 0);
+  }
+  return null;
+}
 
 /**
  * Spreadsheet renderer with per-cell fidelity:
@@ -30,6 +84,8 @@ export async function renderSheet(container: HTMLElement, file: TFile, data: Arr
 /* ---------------- exceljs (styled) ---------------- */
 
 async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer): Promise<void> {
+  // Theme colors must be read before exceljs touches the buffer.
+  const palette = await loadThemePalette(data);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(data);
   if (!wb.worksheets || !wb.worksheets.length) {
@@ -42,7 +98,7 @@ async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer): Pro
 
   const show = (ws: any) => {
     content.empty();
-    renderWorksheetExcelJS(content, ws);
+    renderWorksheetExcelJS(content, ws, palette);
   };
 
   wb.worksheets.forEach((ws: any, i: number) => {
@@ -80,10 +136,11 @@ function parseRange(ref: string): { sc: number; sr: number; ec: number; er: numb
 }
 
 function argbToCss(color: any): string | null {
+  // legacy helper kept for raw hex strings
   if (!color) return null;
-  const argb = typeof color === "string" ? color : color.argb ?? color.rgb;
-  if (typeof argb === "string" && /^[0-9A-Fa-f]{6,8}$/.test(argb)) {
-    return `#${argb.length === 8 ? argb.slice(2) : argb}`;
+  const raw = typeof color === "string" ? color : color.argb ?? color.rgb;
+  if (typeof raw === "string" && /^[0-9A-Fa-f]{6,8}$/.test(raw)) {
+    return `#${(raw.length === 8 ? raw.slice(2) : raw).toUpperCase()}`;
   }
   return null;
 }
@@ -104,10 +161,10 @@ const BORDER_CSS: Record<string, string> = {
   slantDashDot: "2px dashed",
 };
 
-function borderCss(side: any): string | null {
+function borderCss(side: any, palette: ThemePalette): string | null {
   if (!side || !side.style) return null;
   const kind = BORDER_CSS[side.style] ?? "1px solid";
-  const color = argbToCss(side.color) ?? "rgba(140,140,140,.6)";
+  const color = resolveColor(side.color, palette) ?? "rgba(140,140,140,.6)";
   return `${kind} ${color}`;
 }
 
@@ -160,7 +217,7 @@ function formatValue(value: any, numFmt: string | undefined): string {
   return raw;
 }
 
-function cellStyleCss(cell: any): string {
+function cellStyleCss(cell: any, palette: ThemePalette): string {
   const style = cell.style ?? {};
   const parts: string[] = [];
 
@@ -170,18 +227,18 @@ function cellStyleCss(cell: any): string {
   if (font.underline) parts.push("text-decoration:underline");
   if (font.strike) parts.push("text-decoration:line-through");
   if (font.size) parts.push(`font-size:${Math.min(font.size, 20)}pt`);
-  const fontColor = argbToCss(font.color);
+  const fontColor = resolveColor(font.color, palette);
   if (fontColor) parts.push(`color:${fontColor}`);
   if (font.name) parts.push(`font-family:'${String(font.name).replace(/'/g, "")}',sans-serif`);
 
   const fill = style.fill;
   if (fill && (fill.pattern === "solid" || fill.type === "solid")) {
-    const bg = argbToCss(fill.fgColor);
+    const bg = resolveColor(fill.fgColor, palette) ?? resolveColor(fill.bgColor, palette);
     if (bg && bg.toUpperCase() !== "#FFFFFF") parts.push(`background:${bg}`);
   }
 
   const b = style.border ?? {};
-  const top = borderCss(b.top), bottom = borderCss(b.bottom), left = borderCss(b.left), right = borderCss(b.right);
+  const top = borderCss(b.top, palette), bottom = borderCss(b.bottom, palette), left = borderCss(b.left, palette), right = borderCss(b.right, palette);
   if (top || bottom || left || right) {
     parts.push(`border:${top ?? "none"}`);
     if (top && bottom) parts.push(`border-bottom:${bottom}`);
@@ -197,7 +254,7 @@ function cellStyleCss(cell: any): string {
   return parts.join(";");
 }
 
-function renderWorksheetExcelJS(content: HTMLElement, ws: any): void {
+function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePalette): void {
   const rowCount = Math.min(ws.rowCount ?? 0, MAX_ROWS);
   const colCount = Math.min(ws.columnCount ?? 0, MAX_COLS);
   if (!rowCount || !colCount) {
@@ -267,7 +324,7 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: any): void {
         if (span.colspan > 1) td.setAttribute("colspan", String(span.colspan));
         if (span.rowspan > 1) td.setAttribute("rowspan", String(span.rowspan));
       }
-      const css = cell ? cellStyleCss(cell) : "";
+      const css = cell ? cellStyleCss(cell, palette) : "";
       if (css) td.setAttribute("style", css);
 
       let text = "";

@@ -7,8 +7,10 @@ import { renderSheet } from "./sheet";
 import { isNativeExt, openFileExternally } from "./util";
 
 export interface RenderIntoOptions {
-  /** Numeric alias from `![[file|600]]` used as a width hint. */
-  widthHint?: number;
+  /** Numeric alias from `![[file|600]]` used as an embed height hint (px). */
+  heightHint?: number;
+  /** Slide width for pptx rendering (px). */
+  pptxWidth?: number;
   /** Max height in px (embeds only; views fill the pane). */
   maxHeight?: number;
   /** Show filename header bar with actions. */
@@ -29,7 +31,12 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
       const iconWrap = header.createDiv({ cls: "any-viewer-header-icon" });
       iconWrap.appendChild(icon as unknown as HTMLElement);
     }
-    header.createDiv({ cls: "any-viewer-header-title", text: file.name });
+    const title = header.createDiv({ cls: "any-viewer-header-title", text: file.name });
+    title.addClass("is-clickable");
+    title.setAttribute("aria-label", "点击在标签页中打开");
+    title.addEventListener("click", () => {
+      app.workspace.getLeaf("tab").openFile(file);
+    });
 
     const openTabBtn = header.createEl("button", {
       cls: "clickable-icon",
@@ -51,11 +58,12 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
-  if (opts.maxHeight) {
-    stage.style.maxHeight = `${opts.maxHeight}px`;
+  // Numeric alias / settings control the embed height; width stays fluid with horizontal scroll.
+  const effectiveHeight = opts.heightHint ?? opts.maxHeight;
+  if (effectiveHeight) {
+    stage.style.maxHeight = `${effectiveHeight}px`;
     stage.addClass("is-scrollable");
   }
-  if (opts.widthHint) stage.style.width = `${opts.widthHint}px`;
 
   if (kind === "card") {
     stage.appendChild(buildFileCard(app, file));
@@ -63,6 +71,10 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 
   const loading = stage.createDiv({ cls: "any-viewer-loading", text: "正在加载…" });
+  // Double-click anywhere on the embed content opens the file in a tab.
+  stage.addEventListener("dblclick", () => {
+    app.workspace.getLeaf("tab").openFile(file);
+  });
 
   try {
     const data = await app.vault.readBinary(file);
@@ -73,11 +85,11 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     } else if (kind === "sheet") {
       await renderSheet(stage, file, data);
     } else if (kind === "pptx") {
-      const width = opts.widthHint ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
+      const width = opts.pptxWidth ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
       renderPptx(stage, data, width);
     } else if (kind === "html") {
       const url = (app.vault.adapter as any).getResourcePath(file);
-      renderHtmlFrame(stage, url, { allowScripts: opts.allowScripts ?? true, height: opts.maxHeight });
+      renderHtmlFrame(stage, url, { allowScripts: opts.allowScripts ?? true, height: effectiveHeight });
     }
   } catch (err) {
     console.error("[Any Viewer] render failed:", err);
@@ -150,18 +162,18 @@ export class EmbedRenderer {
     span.classList.add("any-viewer-done");
 
     // `![[file.docx|600]]` -> numeric alias acts as a width hint (like images)
-    let widthHint: number | undefined;
+    let heightHint: number | undefined;
     const alias = (span.getAttribute("alt") ?? "").trim();
-    if (/^\d+$/.test(alias)) widthHint = parseInt(alias, 10);
+    if (/^\d+$/.test(alias)) heightHint = parseInt(alias, 10);
 
-    this.takeoverWhenReady(span, file, kind, widthHint);
+    this.takeoverWhenReady(span, file, kind, heightHint);
   }
 
   /** Wait for Obsidian to finish resolving the embed, then take over. */
-  private takeoverWhenReady(span: HTMLElement, file: TFile, kind: RenderKind, widthHint?: number): void {
+  private takeoverWhenReady(span: HTMLElement, file: TFile, kind: RenderKind, heightHint?: number): void {
     const resolved = () => span.classList.contains("is-loaded") || span.childElementCount > 0;
     if (resolved()) {
-      this.takeover(span, file, kind, widthHint);
+      this.takeover(span, file, kind, heightHint);
       return;
     }
 
@@ -171,7 +183,7 @@ export class EmbedRenderer {
       finished = true;
       observer.disconnect();
       clearTimeout(timer);
-      if (span.isConnected) this.takeover(span, file, kind, widthHint);
+      if (span.isConnected) this.takeover(span, file, kind, heightHint);
     };
 
     const observer = new MutationObserver(() => {
@@ -183,7 +195,7 @@ export class EmbedRenderer {
   }
 
   /** Replace the span content with our rendering; re-apply if Obsidian rewrites it. */
-  private takeover(span: HTMLElement, file: TFile, kind: RenderKind, widthHint?: number): void {
+  private takeover(span: HTMLElement, file: TFile, kind: RenderKind, heightHint?: number): void {
     const app = this.plugin.app;
     const s = this.plugin.settings;
 
@@ -191,7 +203,7 @@ export class EmbedRenderer {
       span.empty();
       const frame = span.createDiv({ cls: "any-viewer-frame any-viewer-embed-frame" });
       renderFileInto(app, frame, file, kind, {
-        widthHint,
+        heightHint,
         maxHeight: s.embedMaxHeight,
         showHeader: s.showEmbedHeader,
         allowScripts: s.htmlAllowScripts,

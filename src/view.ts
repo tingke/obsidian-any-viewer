@@ -66,7 +66,7 @@ export class AnyViewerFileView extends FileView {
     }
 
     await renderFileInto(app, frame, file, kind, {
-      widthHint: kind === "pptx" ? Math.max(480, Math.min(1080, this.contentEl.clientWidth || 900)) : undefined,
+      pptxWidth: Math.max(480, Math.min(1080, this.contentEl.clientWidth || 900)),
       maxHeight: undefined,
       showHeader: true,
       allowScripts: s.htmlAllowScripts,
