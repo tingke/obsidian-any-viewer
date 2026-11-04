@@ -4,6 +4,11 @@ const Module = require("node:module");
 
 globalThis.window = globalThis;
 globalThis.self = globalThis;
+globalThis.localStorage = {
+  getItem: () => null,
+  setItem() {},
+  removeItem() {},
+};
 globalThis.document = globalThis.document || {
   createElement: () => ({ style: {}, setAttribute() {}, appendChild() {}, addEventListener() {}, remove() {}, classList: { add() {}, remove() {} } }),
   createElementNS: () => ({ style: {}, setAttribute() {}, appendChild() {} }),

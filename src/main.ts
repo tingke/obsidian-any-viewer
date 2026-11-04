@@ -5,6 +5,7 @@ import { AnyViewerSettingTab } from "./settings";
 import { DEFAULT_SETTINGS, AnyViewerSettings } from "./settings";
 import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
 import { ANY_VIEW_TYPE, AnyViewerFileView } from "./view";
+import { t } from "./i18n";
 
 export default class AnyViewerPlugin extends Plugin {
   settings: AnyViewerSettings = { ...DEFAULT_SETTINGS };
@@ -39,10 +40,7 @@ export default class AnyViewerPlugin extends Plugin {
       }
     }
     if (conflicts.length) {
-      new Notice(
-        `Any Viewer：${conflicts.join("、")} 已被其他插件占用，点击这类文件将由对方插件打开；笔记内的嵌入预览与插入功能不受影响。`,
-        8000
-      );
+      new Notice(t(this.settings).noticeConflicts(conflicts.join(", ")), 8000);
     }
 
     // Inline `![[file.ext]]` embeds in notes.
@@ -52,10 +50,10 @@ export default class AnyViewerPlugin extends Plugin {
     this.insertManager = new InsertManager(this);
     this.insertManager.register();
 
-    this.addRibbonIcon("paperclip", "Any Viewer：插入任意文件", () => {
+    this.addRibbonIcon("paperclip", "Any Viewer — insert files / 插入任意文件", () => {
       const editor = this.app.workspace.activeEditor as Editor | null;
       if (!editor) {
-        new Notice("请先打开一篇笔记，再插入文件");
+        new Notice(t(this.settings).noticeNoActiveNote);
         return;
       }
       this.insertManager?.pickAndInsert(editor, this.app.workspace.getActiveFile()?.path ?? "");

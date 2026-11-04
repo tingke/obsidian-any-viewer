@@ -2,6 +2,7 @@ import * as ExcelJSNS from "exceljs";
 import * as XLSX from "xlsx";
 import { TFile } from "obsidian";
 import * as JSZipNS from "jszip";
+import { Dict } from "./i18n";
 
 const ExcelJS: any = (ExcelJSNS as any).default ?? ExcelJSNS;
 const JSZip: any = (JSZipNS as any).default ?? JSZipNS;
@@ -67,29 +68,32 @@ function resolveColor(color: any, palette: ThemePalette): string | null {
  *   alignment, number formats, column widths, row heights)
  * - csv/tsv/xls and any exceljs parse failure rendered via SheetJS
  */
-export async function renderSheet(container: HTMLElement, file: TFile, data: ArrayBuffer): Promise<void> {
+export async function renderSheet(container: HTMLElement, file: TFile, data: ArrayBuffer, dict?: Dict): Promise<void> {
+  const T = dict ?? ({} as Partial<Dict>);
+  const emptyWorkbook = T.emptyWorkbook ?? "(empty workbook)";
+  const emptySheet = T.emptySheet ?? "(empty sheet)";
   const ext = (file.extension ?? "").toLowerCase();
   if (ext === "xlsx" || ext === "xlsm") {
     try {
-      await renderWithExcelJS(container, data);
+      await renderWithExcelJS(container, data, T);
       return;
     } catch (err) {
       console.warn("[Any Viewer] exceljs render failed, falling back to SheetJS:", err);
       container.empty();
     }
   }
-  renderWithSheetJS(container, data);
+  renderWithSheetJS(container, data, emptyWorkbook, emptySheet);
 }
 
 /* ---------------- exceljs (styled) ---------------- */
 
-async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer): Promise<void> {
+async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer, T: Partial<Dict>): Promise<void> {
   // Theme colors must be read before exceljs touches the buffer.
   const palette = await loadThemePalette(data);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(data);
   if (!wb.worksheets || !wb.worksheets.length) {
-    container.createDiv({ cls: "any-viewer-empty", text: "（空工作簿）" });
+    container.createDiv({ cls: "any-viewer-empty", text: T.emptyWorkbook ?? "(empty workbook)" });
     return;
   }
 
@@ -98,7 +102,7 @@ async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer): Pro
 
   const show = (ws: any) => {
     content.empty();
-    renderWorksheetExcelJS(content, ws, palette);
+    renderWorksheetExcelJS(content, ws, palette, T);
   };
 
   wb.worksheets.forEach((ws: any, i: number) => {
@@ -254,11 +258,11 @@ function cellStyleCss(cell: any, palette: ThemePalette): string {
   return parts.join(";");
 }
 
-function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePalette): void {
+function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePalette, T: Partial<Dict> = {}): void {
   const rowCount = Math.min(ws.rowCount ?? 0, MAX_ROWS);
   const colCount = Math.min(ws.columnCount ?? 0, MAX_COLS);
   if (!rowCount || !colCount) {
-    content.createDiv({ cls: "any-viewer-empty", text: "（该工作表为空）" });
+    content.createDiv({ cls: "any-viewer-empty", text: T.emptySheet ?? "(empty sheet)" });
     return;
   }
 
@@ -351,18 +355,20 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePal
   if ((ws.rowCount ?? 0) > MAX_ROWS || (ws.columnCount ?? 0) > MAX_COLS) {
     content.createDiv({
       cls: "any-viewer-sheet-truncated",
-      text: `表格过大，已截断显示前 ${MAX_ROWS} 行 × ${MAX_COLS} 列（在标签页中打开可查看完整数据）`,
+      text: T.truncated
+        ? T.truncated(MAX_ROWS, MAX_COLS)
+        : `Sheet too large — showing first ${MAX_ROWS} rows × ${MAX_COLS} columns (open in a tab to see everything)`,
     });
   }
 }
 
 /* ---------------- SheetJS (plain) ---------------- */
 
-function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer): void {
+function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer, emptyWorkbook = "(empty workbook)", emptySheet = "(empty sheet)"): void {
   const wb = XLSX.read(new Uint8Array(data), { type: "array" });
   const names = wb.SheetNames;
   if (!names.length) {
-    container.createDiv({ cls: "any-viewer-empty", text: "（空工作簿）" });
+    container.createDiv({ cls: "any-viewer-empty", text: emptyWorkbook });
     return;
   }
 
@@ -379,7 +385,7 @@ function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer): void {
       table.addClass("any-viewer-sheet-table");
       content.appendChild(table);
     } else {
-      content.createDiv({ cls: "any-viewer-empty", text: "（该工作表为空）" });
+      content.createDiv({ cls: "any-viewer-empty", text: emptySheet });
     }
     holder.remove();
   };

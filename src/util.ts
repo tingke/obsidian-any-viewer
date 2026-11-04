@@ -1,4 +1,17 @@
 import { App, Notice, Platform, TFile, Vault, getIcon, normalizePath } from "obsidian";
+import { t } from "./i18n";
+import type AnyViewerPlugin from "./main";
+
+/** Localized notice helpers that need app/settings context. */
+export function notifyOpenFailed(plugin: AnyViewerPlugin, msg: string): void {
+  new Notice(t(plugin.settings).noticeOpenFailed(msg));
+}
+export function notifyShellUnsupported(plugin: AnyViewerPlugin): void {
+  new Notice(t(plugin.settings).noticeShellUnsupported);
+}
+export function notifyRevealUnsupported(plugin: AnyViewerPlugin): void {
+  new Notice(t(plugin.settings).noticeRevealUnsupported);
+}
 
 /** Extensions handled by each renderer. */
 export const DOCX_EXTS = ["docx"];
@@ -78,7 +91,8 @@ export function vaultAbsolutePath(app: App, file: TFile): string {
 }
 
 /** Open a vault file with the OS default application. */
-export function openFileExternally(app: App, file: TFile): void {
+export function openFileExternally(plugin: AnyViewerPlugin, file: TFile): void {
+  const app = plugin.app;
   const shell: any = getElectronShell();
   const path = vaultAbsolutePath(app, file);
   if (shell && typeof shell.openPath === "function") {
@@ -86,7 +100,7 @@ export function openFileExternally(app: App, file: TFile): void {
       const res = shell.openPath(path);
       if (res && typeof res.then === "function") {
         res.then((errMsg: string) => {
-          if (errMsg) new Notice(`Any Viewer：打开失败 - ${errMsg}`);
+          if (errMsg) notifyOpenFailed(plugin, errMsg);
         });
       }
       return;
@@ -94,21 +108,21 @@ export function openFileExternally(app: App, file: TFile): void {
       console.error("[Any Viewer] openPath failed", e);
     }
   }
-  new Notice("Any Viewer：当前平台不支持调用系统应用打开文件");
+  notifyShellUnsupported(plugin);
 }
 
 /** Reveal a vault file in the system file manager. */
-export function revealFileInSystem(app: App, file: TFile): void {
+export function revealFileInSystem(plugin: AnyViewerPlugin, file: TFile): void {
   const shell: any = getElectronShell();
   if (shell && typeof shell.showItemInFolder === "function") {
     try {
-      shell.showItemInFolder(vaultAbsolutePath(app, file));
+      shell.showItemInFolder(vaultAbsolutePath(plugin.app, file));
       return;
     } catch (e) {
       console.error("[Any Viewer] showItemInFolder failed", e);
     }
   }
-  new Notice("Any Viewer：当前平台不支持在文件管理器中显示");
+  notifyRevealUnsupported(plugin);
 }
 
 /** Pick a non-conflicting vault path for `filename` inside `folder` ('' = vault root). */

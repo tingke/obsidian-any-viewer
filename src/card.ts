@@ -1,13 +1,13 @@
-import { App, TFile, getIcon } from "obsidian";
+import { TFile, getIcon } from "obsidian";
+import AnyViewerPlugin from "./main";
 import { formatSize, iconEl, openFileExternally, revealFileInSystem } from "./util";
+import { t } from "./i18n";
 
 /** Build a file card for types we cannot render inline. */
-export function buildFileCard(app: App, file: TFile, opts?: { onOpenExternally?: () => void }): HTMLElement {
+export function buildFileCard(plugin: AnyViewerPlugin, file: TFile, opts?: { onOpenExternally?: () => void }): HTMLElement {
+  const T = t(plugin.settings);
   const card = createDiv({ cls: "any-viewer-card" });
-  card.setAttribute(
-    "title",
-    `${file.path}\n单击：用系统应用打开 · Shift+单击：在文件管理器中显示`
-  );
+  card.setAttribute("title", T.cardTooltip(file.path));
 
   const iconWrap = card.createDiv({ cls: "any-viewer-card-icon" });
   iconWrap.appendChild(iconEl(file.extension));
@@ -22,20 +22,20 @@ export function buildFileCard(app: App, file: TFile, opts?: { onOpenExternally?:
   const actions = card.createDiv({ cls: "any-viewer-card-actions" });
   const openBtn = actions.createEl("button", {
     cls: "any-viewer-card-btn clickable-icon",
-    attr: { "aria-label": "用系统应用打开" },
+    attr: { "aria-label": T.cardOpenLabel },
   });
   const icon = getIcon("external-link");
-  if (icon) openBtn.appendChild(icon);
+  if (icon) openBtn.appendChild(icon as unknown as HTMLElement);
 
   openBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    openFileExternally(app, file);
+    openFileExternally(plugin, file);
     opts?.onOpenExternally?.();
   });
 
   card.addEventListener("click", (e) => {
-    if ((e as MouseEvent).shiftKey) revealFileInSystem(app, file);
-    else openFileExternally(app, file);
+    if ((e as MouseEvent).shiftKey) revealFileInSystem(plugin, file);
+    else openFileExternally(plugin, file);
   });
 
   return card;

@@ -1,4 +1,4 @@
-import { FileView, TFile, WorkspaceLeaf, getIcon } from "obsidian";
+import { FileView, TFile, WorkspaceLeaf } from "obsidian";
 import AnyViewerPlugin from "./main";
 import { renderFileInto } from "./embed";
 import { RenderKind, kindForExt } from "./office";
@@ -15,10 +15,11 @@ export class AnyViewerFileView extends FileView {
     super(leaf);
     this.plugin = plugin;
 
-    this.addAction("external-link", "用系统应用打开", () => {
-      if (this.file) openFileExternally(this.plugin.app, this.file);
+    // addAction titles are set once per pane; use English/Chinese neutral short labels
+    this.addAction("external-link", "Open with system app / 用系统应用打开", () => {
+      if (this.file) openFileExternally(this.plugin, this.file);
     });
-    this.addAction("refresh-cw", "重新加载", () => {
+    this.addAction("refresh-cw", "Reload / 重新加载", () => {
       if (this.file) this.render(this.file);
     });
   }
@@ -41,7 +42,6 @@ export class AnyViewerFileView extends FileView {
 
   private async render(file: TFile): Promise<void> {
     const token = ++this.currentRender;
-    const app = this.plugin.app;
     const s = this.plugin.settings;
 
     const ext = (file.extension ?? "").toLowerCase();
@@ -65,7 +65,7 @@ export class AnyViewerFileView extends FileView {
       if (token !== this.currentRender) return;
     }
 
-    await renderFileInto(app, frame, file, kind, {
+    await renderFileInto(this.plugin, frame, file, kind, {
       pptxWidth: Math.max(480, Math.min(1080, this.contentEl.clientWidth || 900)),
       pptxHeight: Math.max(300, this.contentEl.clientHeight - 40 || 500),
       heightHint: kind === "html" ? Math.max(300, this.contentEl.clientHeight - 40 || 500) : undefined,

@@ -1,10 +1,11 @@
-import { App, MarkdownPostProcessorContext, Notice, TFile, getIcon } from "obsidian";
+import { MarkdownPostProcessorContext, Notice, TFile, getIcon } from "obsidian";
 import AnyViewerPlugin from "./main";
 import { buildFileCard } from "./card";
 import { renderHtmlFrame } from "./html";
 import { RenderKind, kindForExt, renderDocx, renderPptx } from "./office";
 import { renderSheet } from "./sheet";
 import { isNativeExt, openFileExternally } from "./util";
+import { t } from "./i18n";
 
 export interface RenderIntoOptions {
   /** Display width hint in px (from `![[file|300]]` / width attr): the card is sized to it. */
@@ -24,7 +25,9 @@ export interface RenderIntoOptions {
 }
 
 /** Render `file` (of the given kind) into `host`. Shared by embeds and the tab view. */
-export async function renderFileInto(app: App, host: HTMLElement, file: TFile, kind: RenderKind, opts: RenderIntoOptions = {}): Promise<void> {
+export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement, file: TFile, kind: RenderKind, opts: RenderIntoOptions = {}): Promise<void> {
+  const app = plugin.app;
+  const T = t(plugin.settings);
   host.empty();
   host.addClass("any-viewer-frame");
 
@@ -37,14 +40,14 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     }
     const title = header.createDiv({ cls: "any-viewer-header-title", text: file.name });
     title.addClass("is-clickable");
-    title.setAttribute("aria-label", "点击在标签页中打开");
+    title.setAttribute("aria-label", T.clickToOpenInTab);
     title.addEventListener("click", () => {
       app.workspace.getLeaf("tab").openFile(file);
     });
 
     const openTabBtn = header.createEl("button", {
       cls: "clickable-icon",
-      attr: { "aria-label": "在标签页中打开" },
+      attr: { "aria-label": T.openInTab },
     });
     const tabIcon = getIcon("file-output");
     if (tabIcon) openTabBtn.appendChild(tabIcon as unknown as HTMLElement);
@@ -54,11 +57,11 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
 
     const extBtn = header.createEl("button", {
       cls: "clickable-icon",
-      attr: { "aria-label": "用系统应用打开" },
+      attr: { "aria-label": T.openWithSystemApp },
     });
     const extIcon = getIcon("external-link");
     if (extIcon) extBtn.appendChild(extIcon as unknown as HTMLElement);
-    extBtn.addEventListener("click", () => openFileExternally(app, file));
+    extBtn.addEventListener("click", () => openFileExternally(plugin, file));
   }
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
@@ -72,11 +75,11 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 
   if (kind === "card") {
-    stage.appendChild(buildFileCard(app, file));
+    stage.appendChild(buildFileCard(plugin, file));
     return;
   }
 
-  const loading = stage.createDiv({ cls: "any-viewer-loading", text: "正在加载…" });
+  const loading = stage.createDiv({ cls: "any-viewer-loading", text: T.loading });
   // Double-click anywhere on the embed content opens the file in a tab.
   stage.addEventListener("dblclick", () => {
     app.workspace.getLeaf("tab").openFile(file);
@@ -89,7 +92,7 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     if (kind === "docx") {
       await renderDocx(stage, data);
     } else if (kind === "sheet") {
-      await renderSheet(stage, file, data);
+      await renderSheet(stage, file, data, T);
     } else if (kind === "pptx") {
       stage.addClass("no-scroll"); // the pptx viewer scrolls internally
       const width = opts.pptxWidth ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
@@ -115,8 +118,8 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     console.error("[Any Viewer] render failed:", err);
     loading.remove();
     stage.empty();
-    const errBox = stage.createDiv({ cls: "any-viewer-error", text: `渲染失败：${String((err as Error)?.message ?? err)}` });
-    errBox.appendChild(buildFileCard(app, file));
+    const errBox = stage.createDiv({ cls: "any-viewer-error", text: T.renderFailed(String((err as Error)?.message ?? err)) });
+    errBox.appendChild(buildFileCard(plugin, file));
   }
 }
 
@@ -231,7 +234,6 @@ export class EmbedRenderer {
 
   /** Replace the span content with our rendering; re-apply if Obsidian rewrites it. */
   private takeover(span: HTMLElement, file: TFile, kind: RenderKind, widthHint?: number, heightHint?: number): void {
-    const app = this.plugin.app;
     const s = this.plugin.settings;
 
     const render = () => {
@@ -242,7 +244,7 @@ export class EmbedRenderer {
         span.addClass("has-width");
         span.style.width = `${widthHint}px`;
       }
-      renderFileInto(app, frame, file, kind, {
+      renderFileInto(this.plugin, frame, file, kind, {
         widthHint,
         heightHint,
         maxHeight: s.embedMaxHeight,
@@ -250,7 +252,7 @@ export class EmbedRenderer {
         allowScripts: s.htmlAllowScripts,
       }).catch((err) => {
         console.error("[Any Viewer] embed render failed:", err);
-        new Notice(`Any Viewer：${file.name} 渲染失败`);
+        new Notice(t(s).noticeRenderFailed(file.name));
       });
     };
 

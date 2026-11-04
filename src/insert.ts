@@ -1,6 +1,7 @@
 import { Editor, MarkdownFileInfo, Notice, TFile } from "obsidian";
 import AnyViewerPlugin from "./main";
 import { chooseFilePath, ensureFolder, linktextFor } from "./util";
+import { t } from "./i18n";
 
 /** Commands + paste/drop interception that copy files into the vault and insert embeds. */
 export class InsertManager {
@@ -11,7 +12,8 @@ export class InsertManager {
 
     p.addCommand({
       id: "insert-file",
-      name: "插入本地文件（任意类型）",
+      // Command names are registered once at load; keep a bilingual neutral name.
+      name: "Insert local file (any type) 插入本地文件",
       editorCallback: (editor: Editor, ctx: MarkdownFileInfo) => {
         this.pickAndInsert(editor, ctx.file?.path ?? "");
       },
@@ -40,7 +42,7 @@ export class InsertManager {
       if (!files.length) return;
       this.insertFiles(files, editor, sourcePath).catch((err) => {
         console.error("[Any Viewer] insert failed:", err);
-        new Notice(`Any Viewer：插入失败 - ${err instanceof Error ? err.message : String(err)}`);
+        new Notice(t(this.plugin.settings).noticeInsertFailed(err instanceof Error ? err.message : String(err)));
       });
     });
 
@@ -57,7 +59,7 @@ export class InsertManager {
     evt.preventDefault();
     this.insertFiles(targets, editor, this.activeSourcePath()).catch((err) => {
       console.error("[Any Viewer] paste insert failed:", err);
-      new Notice(`Any Viewer：粘贴插入失败 - ${err instanceof Error ? err.message : String(err)}`);
+      new Notice(t(this.plugin.settings).noticePasteFailed(err instanceof Error ? err.message : String(err)));
     });
     return true;
   }
@@ -71,7 +73,7 @@ export class InsertManager {
     evt.preventDefault();
     this.insertFiles(targets, editor, this.activeSourcePath()).catch((err) => {
       console.error("[Any Viewer] drop insert failed:", err);
-      new Notice(`Any Viewer：拖放插入失败 - ${err instanceof Error ? err.message : String(err)}`);
+      new Notice(t(this.plugin.settings).noticeDropFailed(err instanceof Error ? err.message : String(err)));
     });
     return true;
   }
@@ -89,6 +91,7 @@ export class InsertManager {
   /** Copy each file into the vault and insert `![[...]]` embeds at the cursor. */
   async insertFiles(files: File[], editor: Editor, sourcePath: string): Promise<void> {
     const app = this.plugin.app;
+    const T = t(this.plugin.settings);
     const folder = await this.resolveFolder(sourcePath);
     if (folder) await ensureFolder(app.vault, folder);
 
@@ -104,13 +107,13 @@ export class InsertManager {
         ok++;
       } catch (err) {
         console.error("[Any Viewer] failed to save file:", f.name, err);
-        new Notice(`Any Viewer：保存文件失败 - ${f.name}`);
+        new Notice(T.noticeSaveFailed(f.name));
       }
     }
 
     if (lines.length) {
       editor.replaceSelection(`${lines.join("\n")}\n`);
-      new Notice(`Any Viewer：已插入 ${ok} 个文件`);
+      new Notice(T.noticeInserted(ok));
     }
   }
 
