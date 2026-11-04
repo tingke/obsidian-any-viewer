@@ -155,18 +155,34 @@
   overflow: visible;
 }
 
-.any-viewer-sheet-content table {
+.any-viewer-sheet-table {
   border-collapse: collapse;
   font-size: var(--font-ui-smaller);
+  font-family: var(--font-text);
   margin: 0;
+  table-layout: auto;
 }
 
-.any-viewer-sheet-content td,
-.any-viewer-sheet-content th {
+.any-viewer-sheet-table td,
+.any-viewer-sheet-table th {
   border: 1px solid var(--background-modifier-border);
   padding: 3px 8px;
-  white-space: pre;
   min-width: 2.5em;
+  max-width: 480px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.any-viewer-sheet-table td a {
+  color: var(--text-accent);
+}
+
+.any-viewer-sheet-truncated {
+  padding: 6px 2px;
+  font-size: var(--font-ui-smaller);
+  color: var(--text-faint);
 }
 
 /* pptx */

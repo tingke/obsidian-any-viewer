@@ -16,8 +16,9 @@
 
 | 格式 | 渲染方式 |
 |---|---|
-| `.docx` | 高保真渲染（保留样式、分页），基于 [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) |
-| `.xlsx` `.xls` `.csv` `.tsv` | 表格渲染 + 多工作表标签切换，基于 [SheetJS](https://sheetjs.com/) |
+| `.docx` | 高保真渲染（保留样式、分页、页眉页脚），基于 [docx-preview](https://github.com/VolodymyrBaydalka/docxjs) |
+| `.xlsx` `.xlsm` | **真实单元格样式渲染**：填充色、字体、边框、对齐、合并单元格、列宽行高、数字格式，基于 [exceljs](https://github.com/exceljs/exceljs) |
+| `.xls` `.csv` `.tsv` | 表格渲染 + 多工作表标签切换，基于 [SheetJS](https://sheetjs.com/) |
 | `.pptx` | 幻灯片逐页渲染，基于 [pptx-preview](https://www.npmjs.com/package/pptx-preview) |
 | `.html` `.htm` | 沙箱 iframe 内嵌渲染（可配置是否允许脚本） |
 | 其他任意类型 | 文件卡片：类型图标 + 文件名 + 大小 |
@@ -53,9 +54,10 @@ npm run build     # 产物：main.js
 ## 已知限制
 
 - `.doc` / `.ppt` 等老式二进制格式无法在笔记内预览（会显示文件卡片），双击仍可在系统应用中打开
-- 实时预览（Live Preview）中嵌入以阅读模式同款渲染管线呈现，个别主题下可能需要切到阅读视图查看完整效果
+- 若其他插件（如 styled-ms-office-viewer）已注册同一扩展名，点击该类文件由对方插件打开；笔记内的嵌入预览不受影响
 - "用系统应用打开 / 在文件管理器中显示"仅桌面端可用
 - `.pptx` 渲染为静态预览，动画与音视频不播放
+- 与 styled-ms-office-viewer 等基于 WASM 引擎的标签页查看器相比，本插件的 docx/pptx 渲染保真度有限；两者可共存——标签页交给对方，笔记内嵌入由 Any Viewer 负责
 
 ## 致谢
 

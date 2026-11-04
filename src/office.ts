@@ -1,6 +1,5 @@
 import { renderAsync } from "docx-preview";
 import { init as pptxInit } from "pptx-preview";
-import * as XLSX from "xlsx";
 import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
 
 export type RenderKind = "docx" | "sheet" | "pptx" | "html" | "card";
@@ -21,46 +20,12 @@ export async function renderDocx(container: HTMLElement, data: ArrayBuffer): Pro
     inWrapper: true,
     breakPages: true,
     ignoreLastRenderedPageBreak: true,
+    renderHeaders: true,
+    renderFooters: true,
+    renderFootnotes: true,
+    renderEndnotes: true,
+    useBase64URL: true,
   });
-}
-
-/** Render a spreadsheet (xlsx/xls/csv/tsv) into `container`, with sheet tabs. */
-export function renderSheet(container: HTMLElement, data: ArrayBuffer): void {
-  const wb = XLSX.read(new Uint8Array(data), { type: "array" });
-  const names = wb.SheetNames;
-  if (!names.length) {
-    container.createDiv({ cls: "any-viewer-empty", text: "（空工作簿）" });
-    return;
-  }
-
-  const tabBar = container.createDiv({ cls: "any-viewer-sheet-tabs" });
-  const content = container.createDiv({ cls: "any-viewer-sheet-content" });
-
-  const show = (name: string) => {
-    content.empty();
-    const html = XLSX.utils.sheet_to_html(wb.Sheets[name], { header: "", footer: "" });
-    const holder = createDiv();
-    holder.innerHTML = html;
-    const table = holder.querySelector("table");
-    if (table) content.appendChild(table);
-    else content.createDiv({ cls: "any-viewer-empty", text: "（该工作表为空）" });
-    holder.remove();
-  };
-
-  names.forEach((name, i) => {
-    const btn = tabBar.createEl("button", {
-      cls: `any-viewer-tab${i === 0 ? " is-active" : ""}`,
-      text: name,
-      attr: { type: "button" },
-    });
-    btn.addEventListener("click", () => {
-      tabBar.querySelectorAll(".any-viewer-tab").forEach((b) => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
-      show(name);
-    });
-  });
-
-  show(names[0]);
 }
 
 /** Render a .pptx into `container` at the given slide width. */

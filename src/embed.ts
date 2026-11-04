@@ -2,7 +2,8 @@ import { App, MarkdownPostProcessorContext, Notice, TFile, getIcon } from "obsid
 import AnyViewerPlugin from "./main";
 import { buildFileCard } from "./card";
 import { renderHtmlFrame } from "./html";
-import { RenderKind, kindForExt, renderDocx, renderPptx, renderSheet } from "./office";
+import { RenderKind, kindForExt, renderDocx, renderPptx } from "./office";
+import { renderSheet } from "./sheet";
 import { isNativeExt, openFileExternally } from "./util";
 
 export interface RenderIntoOptions {
@@ -26,7 +27,7 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     const icon = getIcon("file");
     if (icon) {
       const iconWrap = header.createDiv({ cls: "any-viewer-header-icon" });
-      iconWrap.appendChild(icon);
+      iconWrap.appendChild(icon as unknown as HTMLElement);
     }
     header.createDiv({ cls: "any-viewer-header-title", text: file.name });
 
@@ -35,7 +36,7 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
       attr: { "aria-label": "在标签页中打开" },
     });
     const tabIcon = getIcon("file-output");
-    if (tabIcon) openTabBtn.appendChild(tabIcon);
+    if (tabIcon) openTabBtn.appendChild(tabIcon as unknown as HTMLElement);
     openTabBtn.addEventListener("click", () => {
       app.workspace.getLeaf("tab").openFile(file);
     });
@@ -45,7 +46,7 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
       attr: { "aria-label": "用系统应用打开" },
     });
     const extIcon = getIcon("external-link");
-    if (extIcon) extBtn.appendChild(extIcon);
+    if (extIcon) extBtn.appendChild(extIcon as unknown as HTMLElement);
     extBtn.addEventListener("click", () => openFileExternally(app, file));
   }
 
@@ -70,7 +71,7 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
     if (kind === "docx") {
       await renderDocx(stage, data);
     } else if (kind === "sheet") {
-      renderSheet(stage, data);
+      await renderSheet(stage, file, data);
     } else if (kind === "pptx") {
       const width = opts.widthHint ?? Math.max(480, Math.min(960, stage.clientWidth || host.clientWidth || 800));
       renderPptx(stage, data, width);
@@ -87,8 +88,18 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 }
 
-/** Turns `![[file.docx]]`-style internal embeds of non-native file types into previews. */
+/**
+ * Turns `![[file.docx]]`-style internal embeds of non-native file types into previews.
+ *
+ * Obsidian resolves internal embeds asynchronously AFTER markdown post processors
+ * run, and rewrites the span content with its default chip. So instead of
+ * replacing content immediately, we wait until Obsidian has finished (span gets
+ * `is-loaded` / child elements), take over the span, and keep a guard observer
+ * that re-renders if Obsidian ever rewrites our content again.
+ */
 export class EmbedRenderer {
+  private static readonly TAKEOVER_TIMEOUT_MS = 800;
+
   constructor(private plugin: AnyViewerPlugin) {}
 
   register(): void {
@@ -99,18 +110,25 @@ export class EmbedRenderer {
     const spans = el.querySelectorAll<HTMLElement>("span.internal-embed");
     for (const span of Array.from(spans)) {
       try {
-        this.maybeRender(span, ctx);
+        this.scheduleTakeover(span, ctx);
       } catch (err) {
         console.error("[Any Viewer] embed processing failed:", err);
       }
     }
   }
 
-  private maybeRender(span: HTMLElement, ctx: MarkdownPostProcessorContext): void {
+  private scheduleTakeover(span: HTMLElement, ctx: MarkdownPostProcessorContext): void {
     if (span.classList.contains("any-viewer-done")) return;
 
-    const src = span.getAttribute("src") ?? "";
+    let src = (span.getAttribute("src") ?? "").trim();
     if (!src) return;
+    src = src.split("#")[0].trim();
+    if (!src) return;
+    try {
+      src = decodeURIComponent(src);
+    } catch (e) {
+      /* keep raw */
+    }
 
     const app = this.plugin.app;
     const file = app.metadataCache.getFirstLinkpathDest(src, ctx.sourcePath);
@@ -130,25 +148,69 @@ export class EmbedRenderer {
     if (!kind) return;
 
     span.classList.add("any-viewer-done");
-    span.classList.add("any-viewer-embed");
 
     // `![[file.docx|600]]` -> numeric alias acts as a width hint (like images)
     let widthHint: number | undefined;
-    const alt = (span.getAttribute("alt") ?? "").trim();
-    if (/^\d+$/.test(alt)) widthHint = parseInt(alt, 10);
+    const alias = (span.getAttribute("alt") ?? "").trim();
+    if (/^\d+$/.test(alias)) widthHint = parseInt(alias, 10);
 
-    // Preserve the original embed behavior for the source markdown
-    // (nothing to keep: we replace the placeholder content entirely).
-    span.empty();
+    this.takeoverWhenReady(span, file, kind, widthHint);
+  }
 
-    renderFileInto(app, span, file, kind, {
-      widthHint,
-      maxHeight: s.embedMaxHeight,
-      showHeader: s.showEmbedHeader,
-      allowScripts: s.htmlAllowScripts,
-    }).catch((err) => {
-      console.error("[Any Viewer] embed render failed:", err);
-      new Notice(`Any Viewer：${file.name} 渲染失败`);
+  /** Wait for Obsidian to finish resolving the embed, then take over. */
+  private takeoverWhenReady(span: HTMLElement, file: TFile, kind: RenderKind, widthHint?: number): void {
+    const resolved = () => span.classList.contains("is-loaded") || span.childElementCount > 0;
+    if (resolved()) {
+      this.takeover(span, file, kind, widthHint);
+      return;
+    }
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      observer.disconnect();
+      clearTimeout(timer);
+      if (span.isConnected) this.takeover(span, file, kind, widthHint);
+    };
+
+    const observer = new MutationObserver(() => {
+      if (resolved()) finish();
     });
+    observer.observe(span, { childList: true, attributes: true, attributeFilter: ["class"] });
+
+    const timer = setTimeout(finish, EmbedRenderer.TAKEOVER_TIMEOUT_MS);
+  }
+
+  /** Replace the span content with our rendering; re-apply if Obsidian rewrites it. */
+  private takeover(span: HTMLElement, file: TFile, kind: RenderKind, widthHint?: number): void {
+    const app = this.plugin.app;
+    const s = this.plugin.settings;
+
+    const render = () => {
+      span.empty();
+      const frame = span.createDiv({ cls: "any-viewer-frame any-viewer-embed-frame" });
+      renderFileInto(app, frame, file, kind, {
+        widthHint,
+        maxHeight: s.embedMaxHeight,
+        showHeader: s.showEmbedHeader,
+        allowScripts: s.htmlAllowScripts,
+      }).catch((err) => {
+        console.error("[Any Viewer] embed render failed:", err);
+        new Notice(`Any Viewer：${file.name} 渲染失败`);
+      });
+    };
+
+    render();
+
+    // Obsidian may rewrite the embed span later (e.g. on re-render); re-apply then.
+    const guard = new MutationObserver(() => {
+      if (!span.isConnected) {
+        guard.disconnect();
+        return;
+      }
+      if (!span.querySelector(":scope > .any-viewer-frame")) render();
+    });
+    guard.observe(span, { childList: true });
   }
 }
