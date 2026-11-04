@@ -62,10 +62,11 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
   }
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
-  // Width hint sizes the whole card; content keeps its natural size and scrolls.
+  // The card width is applied to the outer embed span (has-width); content keeps
+  // its natural size and scrolls inside. pptx & html manage their own scrolling.
   const effectiveHeight = opts.heightHint ?? opts.maxHeight;
-  const isPptx = kind === "pptx";
-  if (!isPptx && (effectiveHeight || opts.widthHint)) {
+  const selfScrolling = kind === "pptx" || kind === "html";
+  if (!selfScrolling && (effectiveHeight || opts.widthHint)) {
     if (effectiveHeight) stage.style.maxHeight = `${effectiveHeight}px`;
     stage.addClass("is-scrollable");
   }
@@ -106,7 +107,6 @@ export async function renderFileInto(app: App, host: HTMLElement, file: TFile, k
       await renderHtmlFrame(stage, data, {
         allowScripts: opts.allowScripts ?? true,
         height: opts.heightHint,
-        width: opts.widthHint,
         maxHeight: opts.maxHeight,
         resourceUrl,
       });
@@ -184,6 +184,7 @@ export class EmbedRenderer {
     // Size hints, mimicking Obsidian's image embeds:
     // - Obsidian parses `![[file|300]]` / `![[file|300x200]]` into width/height attributes
     // - for unknown-type embeds the alias may also land in `alt`
+    // - extra syntax: `|x200` sets the height only
     let widthHint: number | undefined;
     let heightHint: number | undefined;
     const wAttr = parseInt(span.getAttribute("width") ?? "", 10);
@@ -191,10 +192,13 @@ export class EmbedRenderer {
     if (Number.isFinite(wAttr) && wAttr > 0) widthHint = wAttr;
     if (Number.isFinite(hAttr) && hAttr > 0) heightHint = hAttr;
     const alias = (span.getAttribute("alt") ?? "").trim();
-    const aliasMatch = /^(\d+)(?:x(\d+))?$/.exec(alias);
-    if (aliasMatch) {
-      if (widthHint === undefined) widthHint = parseInt(aliasMatch[1], 10);
-      if (aliasMatch[2] && heightHint === undefined) heightHint = parseInt(aliasMatch[2], 10);
+    const onlyHeight = /^x(\d+)$/.exec(alias);
+    const std = /^(\d+)(?:x(\d+))?$/.exec(alias);
+    if (onlyHeight) {
+      heightHint ??= parseInt(onlyHeight[1], 10);
+    } else if (std) {
+      widthHint ??= parseInt(std[1], 10);
+      if (std[2]) heightHint ??= parseInt(std[2], 10);
     }
 
     this.takeoverWhenReady(span, file, kind, widthHint, heightHint);
@@ -234,8 +238,9 @@ export class EmbedRenderer {
       span.empty();
       const frame = span.createDiv({ cls: "any-viewer-frame any-viewer-embed-frame" });
       if (widthHint) {
-        frame.addClass("has-width");
-        frame.style.width = `${widthHint}px`;
+        // size the OUTER embed span so the card (border/background) shrinks too
+        span.addClass("has-width");
+        span.style.width = `${widthHint}px`;
       }
       renderFileInto(app, frame, file, kind, {
         widthHint,

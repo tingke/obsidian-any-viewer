@@ -4,12 +4,13 @@ import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
 
 export type RenderKind = "docx" | "sheet" | "pptx" | "html" | "card";
 
-/** Map a lowercase extension to the renderer kind, honoring the enabled toggles. */
+/** Map a lowercase extension to the renderer kind; disabled formats are skipped entirely
+ *  (leaving them to Obsidian or other plugins), unknown types fall back to the card. */
 export function kindForExt(ext: string, opts: { docx: boolean; sheet: boolean; pptx: boolean; html: boolean; card: boolean }): RenderKind | null {
-  if (DOCX_EXTS.includes(ext)) return opts.docx ? "docx" : opts.card ? "card" : null;
-  if (SHEET_EXTS.includes(ext)) return opts.sheet ? "sheet" : opts.card ? "card" : null;
-  if (PPTX_EXTS.includes(ext)) return opts.pptx ? "pptx" : opts.card ? "card" : null;
-  if (HTML_EXTS.includes(ext)) return opts.html ? "html" : opts.card ? "card" : null;
+  if (DOCX_EXTS.includes(ext)) return opts.docx ? "docx" : null;
+  if (SHEET_EXTS.includes(ext)) return opts.sheet ? "sheet" : null;
+  if (PPTX_EXTS.includes(ext)) return opts.pptx ? "pptx" : null;
+  if (HTML_EXTS.includes(ext)) return opts.html ? "html" : null;
   return opts.card ? "card" : null;
 }
 

@@ -122,8 +122,11 @@ export class AnyViewerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("预览格式").setHeading();
 
+    const formatDesc = "关闭后本插件完全不接管该类型（不注册文件视图、不渲染嵌入），交由 Obsidian 或其他插件处理。修改后需重启 Obsidian 生效。";
+
     new Setting(containerEl)
       .setName("Word 文档（.docx）")
+      .setDesc(formatDesc)
       .addToggle((t) =>
         t.setValue(this.plugin.settings.enableDocx).onChange(async (v) => {
           this.plugin.settings.enableDocx = v;
@@ -133,6 +136,7 @@ export class AnyViewerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("电子表格（.xlsx / .xls / .csv / .tsv）")
+      .setDesc(formatDesc)
       .addToggle((t) =>
         t.setValue(this.plugin.settings.enableSheet).onChange(async (v) => {
           this.plugin.settings.enableSheet = v;
@@ -142,6 +146,7 @@ export class AnyViewerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("演示文稿（.pptx）")
+      .setDesc(formatDesc)
       .addToggle((t) =>
         t.setValue(this.plugin.settings.enablePptx).onChange(async (v) => {
           this.plugin.settings.enablePptx = v;
@@ -151,7 +156,7 @@ export class AnyViewerSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("网页文件（.html / .htm）")
-      .setDesc("以沙箱 iframe 方式在笔记内渲染。")
+      .setDesc("以沙箱 iframe 方式在笔记内渲染。" + formatDesc)
       .addToggle((t) =>
         t.setValue(this.plugin.settings.enableHtml).onChange(async (v) => {
           this.plugin.settings.enableHtml = v;

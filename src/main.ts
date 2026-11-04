@@ -3,7 +3,7 @@ import { EmbedRenderer } from "./embed";
 import { InsertManager } from "./insert";
 import { AnyViewerSettingTab } from "./settings";
 import { DEFAULT_SETTINGS, AnyViewerSettings } from "./settings";
-import { VIEWABLE_EXTS } from "./util";
+import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
 import { ANY_VIEW_TYPE, AnyViewerFileView } from "./view";
 
 export default class AnyViewerPlugin extends Plugin {
@@ -19,9 +19,18 @@ export default class AnyViewerPlugin extends Plugin {
     // Register one extension at a time: another plugin may already own some
     // of them (e.g. styled-ms-office-viewer claims docx), and Obsidian throws
     // on duplicates — we skip those instead of failing the whole plugin.
+    // Only extensions whose format toggle is ON are claimed; disabled formats
+    // stay with other plugins (needs an app restart to take effect).
     this.registerView(ANY_VIEW_TYPE, (leaf) => new AnyViewerFileView(leaf, this));
+    const s = this.settings;
+    const exts = [
+      ...(s.enableDocx ? DOCX_EXTS : []),
+      ...(s.enableSheet ? SHEET_EXTS : []),
+      ...(s.enablePptx ? PPTX_EXTS : []),
+      ...(s.enableHtml ? HTML_EXTS : []),
+    ];
     const conflicts: string[] = [];
-    for (const ext of VIEWABLE_EXTS) {
+    for (const ext of exts) {
       try {
         this.registerExtensions([ext], ANY_VIEW_TYPE);
       } catch (err) {
