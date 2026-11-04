@@ -1,6 +1,6 @@
 {
   "name": "obsidian-any-viewer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Insert and preview any file type (Word/Excel/PowerPoint/HTML/CSV and more) inside Obsidian notes",
   "main": "main.js",
   "scripts": {
