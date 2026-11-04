@@ -16,8 +16,25 @@ export default class AnyViewerPlugin extends Plugin {
     this.addSettingTab(new AnyViewerSettingTab(this.app, this));
 
     // Dedicated tab view for supported office/html files.
+    // Register one extension at a time: another plugin may already own some
+    // of them (e.g. styled-ms-office-viewer claims docx), and Obsidian throws
+    // on duplicates — we skip those instead of failing the whole plugin.
     this.registerView(ANY_VIEW_TYPE, (leaf) => new AnyViewerFileView(leaf, this));
-    this.registerExtensions(VIEWABLE_EXTS, ANY_VIEW_TYPE);
+    const conflicts: string[] = [];
+    for (const ext of VIEWABLE_EXTS) {
+      try {
+        this.registerExtensions([ext], ANY_VIEW_TYPE);
+      } catch (err) {
+        conflicts.push(ext);
+        console.warn(`[Any Viewer] "${ext}" already registered by another plugin, skipping`, err);
+      }
+    }
+    if (conflicts.length) {
+      new Notice(
+        `Any Viewer：${conflicts.join("、")} 已被其他插件占用，点击这类文件将由对方插件打开；笔记内的嵌入预览与插入功能不受影响。`,
+        8000
+      );
+    }
 
     // Inline `![[file.ext]]` embeds in notes.
     new EmbedRenderer(this).register();
