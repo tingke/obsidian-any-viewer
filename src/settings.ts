@@ -1,12 +1,12 @@
-import { App, PluginSettingTab, Setting, normalizePath } from "obsidian";
+import { App, PluginSettingTab, SettingDefinition, SettingDefinitionItem, normalizePath } from "obsidian";
 import AnyViewerPlugin from "./main";
-import { UiLanguage, t } from "./i18n";
+import { t } from "./i18n";
 
 export type AttachmentLocation = "obsidian" | "current" | "custom";
 
 export interface AnyViewerSettings {
   /** UI language: auto (follow Obsidian) / zh / en. */
-  language: UiLanguage;
+  language: "auto" | "zh" | "en";
   /** Where pasted/dropped/inserted files are saved. */
   attachmentLocation: AttachmentLocation;
   customAttachmentPath: string;
@@ -49,6 +49,11 @@ export const DEFAULT_SETTINGS: AnyViewerSettings = {
   htmlAllowScripts: true,
 };
 
+/**
+ * Declarative settings (Obsidian 1.13+): definitions feed both rendering and
+ * the settings search index. Control values are persisted via
+ * getControlValue/setControlValue on this tab.
+ */
 export class AnyViewerSettingTab extends PluginSettingTab {
   plugin: AnyViewerPlugin;
 
@@ -57,175 +62,103 @@ export class AnyViewerSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
-  display(): void {
-    const { containerEl } = this;
+  getSettingDefinitions(): SettingDefinitionItem[] {
     const T = t(this.plugin.settings);
-    containerEl.empty();
+    type SettingsKey = keyof AnyViewerSettings;
+    const toggle = (
+      key: SettingsKey,
+      name: string,
+      desc?: string
+    ): SettingDefinition => ({
+      name,
+      desc,
+      control: { type: "toggle", key, defaultValue: false },
+    });
 
-    new Setting(containerEl).setName(T.settingsLanguage).setDesc(T.settingsLanguageDesc).setHeading();
-    new Setting(containerEl)
-      .setName(T.settingsLanguage)
-      .addDropdown((d) =>
-        d
-          .addOption("auto", "Auto / 自动")
-          .addOption("zh", "中文")
-          .addOption("en", "English")
-          .setValue(this.plugin.settings.language)
-          .onChange(async (v) => {
-            this.plugin.settings.language = v as UiLanguage;
-            await this.plugin.saveSettings();
-            this.display();
-          })
-      );
+    return [
+      {
+        name: T.settingsLanguage,
+        desc: T.settingsLanguageDesc,
+        control: {
+          type: "dropdown",
+          key: "language",
+          defaultValue: "auto",
+          options: { auto: "Auto / 自动", zh: "中文", en: "English" },
+        },
+      },
 
-    new Setting(containerEl).setName(T.settingsInsert).setHeading();
+      {
+        type: "group",
+        heading: T.settingsInsert,
+        items: [
+          {
+            name: T.settingsAttachmentLocation,
+            desc: T.settingsAttachmentLocationDesc,
+            control: {
+              type: "dropdown",
+              key: "attachmentLocation",
+              defaultValue: "obsidian",
+              options: {
+                obsidian: T.settingsLocObsidian,
+                current: T.settingsLocCurrent,
+                custom: T.settingsLocCustom,
+              },
+            },
+          },
+          {
+            name: T.settingsCustomFolder,
+            desc: T.settingsCustomFolderDesc,
+            visible: () => this.plugin.settings.attachmentLocation === "custom",
+            control: { type: "folder", key: "customAttachmentPath", defaultValue: "attachments" },
+          },
+          toggle("interceptPaste", T.settingsInterceptPaste, T.settingsInterceptPasteDesc),
+          toggle("interceptDrop", T.settingsInterceptDrop, T.settingsInterceptDropDesc),
+          toggle("interceptImages", T.settingsInterceptImages, T.settingsInterceptImagesDesc),
+        ],
+      },
 
-    new Setting(containerEl)
-      .setName(T.settingsAttachmentLocation)
-      .setDesc(T.settingsAttachmentLocationDesc)
-      .addDropdown((d) =>
-        d
-          .addOption("obsidian", T.settingsLocObsidian)
-          .addOption("current", T.settingsLocCurrent)
-          .addOption("custom", T.settingsLocCustom)
-          .setValue(this.plugin.settings.attachmentLocation)
-          .onChange(async (v) => {
-            this.plugin.settings.attachmentLocation = v as AttachmentLocation;
-            await this.plugin.saveSettings();
-            this.display();
-          })
-      );
+      {
+        type: "group",
+        heading: T.settingsFormats,
+        items: [
+          toggle("enableDocx", T.settingsEnableDocx, T.settingsFormatDesc),
+          toggle("enableSheet", T.settingsEnableSheet, T.settingsFormatDesc),
+          toggle("enablePptx", T.settingsEnablePptx, T.settingsFormatDesc),
+          toggle("enableHtml", T.settingsEnableHtml, `${T.settingsHtmlDesc} ${T.settingsFormatDesc}`),
+          toggle("enableFallbackCard", T.settingsFallbackCard, T.settingsFallbackCardDesc),
+        ],
+      },
 
-    if (this.plugin.settings.attachmentLocation === "custom") {
-      new Setting(containerEl)
-        .setName(T.settingsCustomFolder)
-        .setDesc(T.settingsCustomFolderDesc)
-        .addText((txt) =>
-          txt
-            .setPlaceholder("attachments")
-            .setValue(this.plugin.settings.customAttachmentPath)
-            .onChange(async (v) => {
-              this.plugin.settings.customAttachmentPath = normalizePath(v.trim() || "attachments");
-              await this.plugin.saveSettings();
-            })
-        );
+      {
+        type: "group",
+        heading: T.settingsAppearance,
+        items: [
+          {
+            name: T.settingsMaxHeight,
+            desc: T.settingsMaxHeightDesc,
+            control: { type: "number", key: "embedMaxHeight", defaultValue: 420, min: 100, max: 10000, step: 1 },
+          },
+          toggle("showEmbedHeader", T.settingsShowHeader, T.settingsShowHeaderDesc),
+          toggle("htmlAllowScripts", T.settingsAllowScripts, T.settingsAllowScriptsDesc),
+        ],
+      },
+    ];
+  }
+
+  /** Declarative controls read from `this.plugin.settings`. */
+  getControlValue(key: string): unknown {
+    const store = this.plugin.settings as unknown as Record<string, unknown>;
+    return store[key];
+  }
+
+  /** Declarative controls persist through `plugin.saveSettings()`. */
+  setControlValue(key: string, value: unknown): void {
+    const store = this.plugin.settings as unknown as Record<string, unknown>;
+    if (key === "customAttachmentPath" && typeof value === "string") {
+      store[key] = normalizePath(value.trim() || "attachments");
+    } else {
+      store[key] = value;
     }
-
-    new Setting(containerEl)
-      .setName(T.settingsInterceptPaste)
-      .setDesc(T.settingsInterceptPasteDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.interceptPaste).onChange(async (v) => {
-          this.plugin.settings.interceptPaste = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsInterceptDrop)
-      .setDesc(T.settingsInterceptDropDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.interceptDrop).onChange(async (v) => {
-          this.plugin.settings.interceptDrop = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsInterceptImages)
-      .setDesc(T.settingsInterceptImagesDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.interceptImages).onChange(async (v) => {
-          this.plugin.settings.interceptImages = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl).setName(T.settingsFormats).setHeading();
-
-    new Setting(containerEl)
-      .setName(T.settingsEnableDocx)
-      .setDesc(T.settingsFormatDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.enableDocx).onChange(async (v) => {
-          this.plugin.settings.enableDocx = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsEnableSheet)
-      .setDesc(T.settingsFormatDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.enableSheet).onChange(async (v) => {
-          this.plugin.settings.enableSheet = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsEnablePptx)
-      .setDesc(T.settingsFormatDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.enablePptx).onChange(async (v) => {
-          this.plugin.settings.enablePptx = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsEnableHtml)
-      .setDesc(T.settingsHtmlDesc + T.settingsFormatDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.enableHtml).onChange(async (v) => {
-          this.plugin.settings.enableHtml = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsFallbackCard)
-      .setDesc(T.settingsFallbackCardDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.enableFallbackCard).onChange(async (v) => {
-          this.plugin.settings.enableFallbackCard = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl).setName(T.settingsAppearance).setHeading();
-
-    new Setting(containerEl)
-      .setName(T.settingsMaxHeight)
-      .setDesc(T.settingsMaxHeightDesc)
-      .addText((txt) =>
-        txt.setValue(String(this.plugin.settings.embedMaxHeight)).onChange(async (v) => {
-          const n = parseInt(v, 10);
-          if (!Number.isNaN(n) && n >= 100 && n <= 10000) {
-            this.plugin.settings.embedMaxHeight = n;
-            await this.plugin.saveSettings();
-          }
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsShowHeader)
-      .setDesc(T.settingsShowHeaderDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.showEmbedHeader).onChange(async (v) => {
-          this.plugin.settings.showEmbedHeader = v;
-          await this.plugin.saveSettings();
-        })
-      );
-
-    new Setting(containerEl)
-      .setName(T.settingsAllowScripts)
-      .setDesc(T.settingsAllowScriptsDesc)
-      .addToggle((tog) =>
-        tog.setValue(this.plugin.settings.htmlAllowScripts).onChange(async (v) => {
-          this.plugin.settings.htmlAllowScripts = v;
-          await this.plugin.saveSettings();
-        })
-      );
+    void this.plugin.saveSettings();
   }
 }

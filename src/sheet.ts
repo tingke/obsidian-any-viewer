@@ -1,11 +1,12 @@
 import * as ExcelJSNS from "exceljs";
+import type { Cell, CellValue, Color, Workbook, Worksheet } from "exceljs";
 import * as XLSX from "xlsx";
 import { TFile } from "obsidian";
 import * as JSZipNS from "jszip";
 import { Dict } from "./i18n";
 
-const ExcelJS: any = (ExcelJSNS as any).default ?? ExcelJSNS;
-const JSZip: any = (JSZipNS as any).default ?? JSZipNS;
+const ExcelJS: typeof ExcelJSNS = ExcelJSNS;
+const JSZip: typeof JSZipNS = JSZipNS;
 
 const MAX_ROWS = 2000;
 const MAX_COLS = 80;
@@ -23,16 +24,16 @@ async function loadThemePalette(data: ArrayBuffer): Promise<ThemePalette> {
     const scheme = /<a:clrScheme[\s\S]*?<\/a:clrScheme>/.exec(xml)?.[0];
     if (!scheme) return fallback;
     const byName: Record<string, string> = {};
-    for (const m of scheme.matchAll(/<a:(dk1|lt1|dk2|lt2|accent[1-6])>([\s\S]*?)<\/a:\1>/g)) {
-      const srgb = /<a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(m[2])?.[1];
-      const sys = /<a:sysClr[^>]*lastClr="([0-9A-Fa-f]{6})"/.exec(m[2])?.[1];
-      byName[m[1]] = `#${(srgb ?? sys ?? "000000").toUpperCase()}`;
+    for (const match of scheme.matchAll(/<a:(dk1|lt1|dk2|lt2|accent[1-6])>([\s\S]*?)<\/a:\1>/g)) {
+      const srgb = /<a:srgbClr val="([0-9A-Fa-f]{6})"/.exec(match[2])?.[1];
+      const sys = /<a:sysClr[^>]*lastClr="([0-9A-Fa-f]{6})"/.exec(match[2])?.[1];
+      byName[match[1]] = `#${(srgb ?? sys ?? "000000").toUpperCase()}`;
     }
     // Excel's theme color index order differs from the XML order:
     // 0=lt1, 1=dk1, 2=lt2, 3=dk2, 4..9=accent1..6
     return [byName.lt1, byName.dk1, byName.lt2, byName.dk2, byName.accent1, byName.accent2, byName.accent3, byName.accent4, byName.accent5, byName.accent6];
-  } catch (e) {
-    console.warn("[Any Viewer] theme palette extraction failed:", e);
+  } catch (err) {
+    console.warn("[Any Viewer] theme palette extraction failed:", err);
     return fallback;
   }
 }
@@ -48,28 +49,26 @@ function applyTint(hex: string, tint: number): string {
   return `#${out.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** Resolve any xlsx color shape (argb / rgb / theme+tint / indexed) to CSS. */
-function resolveColor(color: any, palette: ThemePalette): string | null {
+/** Loose shape of an xlsx color as seen at runtime (exceljs types omit tint/indexed). */
+type ColorLike = { argb?: string; rgb?: string; theme?: number; tint?: number; indexed?: number };
+type BorderSideLike = { style?: string; color?: ColorLike };
+
+/** Resolve any xlsx color shape (argb / theme+tint / indexed) to CSS. */
+function resolveColor(color: ColorLike | undefined, palette: ThemePalette): string | null {
   if (!color) return null;
-  const raw = typeof color === "string" ? color : color.argb ?? color.rgb;
+  const raw = typeof color === "string" ? color : color.argb;
   if (typeof raw === "string" && /^[0-9A-Fa-f]{6,8}$/.test(raw)) {
     return `#${(raw.length === 8 ? raw.slice(2) : raw).toUpperCase()}`;
   }
-  if (color.theme !== undefined && color.theme !== null) {
+  if (typeof color.theme === "number") {
     const base = palette[color.theme];
     if (base) return applyTint(base, typeof color.tint === "number" ? color.tint : 0);
   }
   return null;
 }
 
-/**
- * Spreadsheet renderer with per-cell fidelity:
- * - xlsx/xlsm rendered via exceljs (fills, fonts, borders, merges,
- *   alignment, number formats, column widths, row heights)
- * - csv/tsv/xls and any exceljs parse failure rendered via SheetJS
- */
 export async function renderSheet(container: HTMLElement, file: TFile, data: ArrayBuffer, dict?: Dict): Promise<void> {
-  const T = dict ?? ({} as Partial<Dict>);
+  const T: Partial<Dict> = dict ?? {};
   const emptyWorkbook = T.emptyWorkbook ?? "(empty workbook)";
   const emptySheet = T.emptySheet ?? "(empty sheet)";
   const ext = (file.extension ?? "").toLowerCase();
@@ -90,9 +89,9 @@ export async function renderSheet(container: HTMLElement, file: TFile, data: Arr
 async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer, T: Partial<Dict>): Promise<void> {
   // Theme colors must be read before exceljs touches the buffer.
   const palette = await loadThemePalette(data);
-  const wb = new ExcelJS.Workbook();
+  const wb: Workbook = new ExcelJS.Workbook();
   await wb.xlsx.load(data);
-  if (!wb.worksheets || !wb.worksheets.length) {
+  if (!wb.worksheets.length) {
     container.createDiv({ cls: "any-viewer-empty", text: T.emptyWorkbook ?? "(empty workbook)" });
     return;
   }
@@ -100,12 +99,12 @@ async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer, T: P
   const tabBar = container.createDiv({ cls: "any-viewer-sheet-tabs" });
   const content = container.createDiv({ cls: "any-viewer-sheet-content" });
 
-  const show = (ws: any) => {
+  const show = (ws: Worksheet) => {
     content.empty();
     renderWorksheetExcelJS(content, ws, palette, T);
   };
 
-  wb.worksheets.forEach((ws: any, i: number) => {
+  wb.worksheets.forEach((ws: Worksheet, i: number) => {
     const btn = tabBar.createEl("button", {
       cls: `any-viewer-tab${i === 0 ? " is-active" : ""}`,
       text: ws.name,
@@ -129,7 +128,7 @@ function colToIndex(col: string): number {
 
 /** "B3:D5" -> {sc, sr, ec, er} (1-based inclusive) */
 function parseRange(ref: string): { sc: number; sr: number; ec: number; er: number } | null {
-  const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i.exec(ref?.trim?.() ?? "");
+  const m = /^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i.exec(ref.trim());
   if (!m) return null;
   return {
     sc: colToIndex(m[1].toUpperCase()),
@@ -139,14 +138,9 @@ function parseRange(ref: string): { sc: number; sr: number; ec: number; er: numb
   };
 }
 
-function argbToCss(color: any): string | null {
-  // legacy helper kept for raw hex strings
-  if (!color) return null;
-  const raw = typeof color === "string" ? color : color.argb ?? color.rgb;
-  if (typeof raw === "string" && /^[0-9A-Fa-f]{6,8}$/.test(raw)) {
-    return `#${(raw.length === 8 ? raw.slice(2) : raw).toUpperCase()}`;
-  }
-  return null;
+/** Resolve a cell color to CSS, honoring the workbook theme palette. */
+function cellColor(color: Partial<Color> | undefined, palette: ThemePalette): string | null {
+  return resolveColor(color, palette);
 }
 
 const BORDER_CSS: Record<string, string> = {
@@ -165,28 +159,31 @@ const BORDER_CSS: Record<string, string> = {
   slantDashDot: "2px dashed",
 };
 
-function borderCss(side: any, palette: ThemePalette): string | null {
+function borderCss(side: BorderSideLike | undefined, palette: ThemePalette): string | null {
   if (!side || !side.style) return null;
   const kind = BORDER_CSS[side.style] ?? "1px solid";
-  const color = resolveColor(side.color, palette) ?? "rgba(140,140,140,.6)";
+  const color = cellColor(side.color, palette) ?? "rgba(140,140,140,.6)";
   return `${kind} ${color}`;
 }
 
-function valueText(value: any): string {
+function valueText(value: CellValue): string {
   if (value === null || value === undefined) return "";
   if (value instanceof Date) return formatDate(value);
-  if (typeof value === "object") {
-    if (Array.isArray(value.richText)) return value.richText.map((f: any) => f.text ?? "").join("");
-    if (value.result !== undefined && value.result !== null) {
-      return value.result instanceof Date ? formatDate(value.result) : String(value.result);
-    }
-    if (value.text !== undefined) return String(value.text);
-    if (value.formula !== undefined) return String(value.formula);
-    if (value.error !== undefined) return `#${value.error}`;
-    if (Array.isArray(value)) return (value as any[]).map((v) => valueText(v)).join(" ");
-    return "";
+  if (typeof value !== "object") return String(value);
+  if ("richText" in value && Array.isArray(value.richText)) {
+    return value.richText.map((fragment) => fragment.text ?? "").join("");
   }
-  return String(value);
+  if ("result" in value) {
+    const result = value.result;
+    if (result === null || result === undefined) return "";
+    if (result instanceof Date) return formatDate(result);
+    if (typeof result === "object") return "";
+    return String(result);
+  }
+  if ("text" in value) return String(value.text);
+  if ("hyperlink" in value && !("text" in value)) return String(value.hyperlink);
+  if ("error" in value) return `#${value.error}`;
+  return "";
 }
 
 function formatDate(d: Date): string {
@@ -199,7 +196,7 @@ function formatDate(d: Date): string {
 }
 
 /** Rough numeric/date formatting based on the number format string. */
-function formatValue(value: any, numFmt: string | undefined): string {
+function formatValue(value: CellValue, numFmt: string | undefined): string {
   const raw = valueText(value);
   if (numFmt && typeof value === "number" && Number.isFinite(value)) {
     try {
@@ -214,14 +211,15 @@ function formatValue(value: any, numFmt: string | undefined): string {
         return value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
       }
       if (decimals > 0) return value.toFixed(decimals);
-    } catch (e) {
-      /* fall back to raw */
+    } catch (err) {
+      console.warn("[Any Viewer] number formatting failed", err);
+      return raw;
     }
   }
   return raw;
 }
 
-function cellStyleCss(cell: any, palette: ThemePalette): string {
+function cellStyleCss(cell: Cell, palette: ThemePalette): string {
   const style = cell.style ?? {};
   const parts: string[] = [];
 
@@ -231,18 +229,23 @@ function cellStyleCss(cell: any, palette: ThemePalette): string {
   if (font.underline) parts.push("text-decoration:underline");
   if (font.strike) parts.push("text-decoration:line-through");
   if (font.size) parts.push(`font-size:${Math.min(font.size, 20)}pt`);
-  const fontColor = resolveColor(font.color, palette);
+  const fontColor = cellColor(font.color, palette);
   if (fontColor) parts.push(`color:${fontColor}`);
   if (font.name) parts.push(`font-family:'${String(font.name).replace(/'/g, "")}',sans-serif`);
 
   const fill = style.fill;
-  if (fill && (fill.pattern === "solid" || fill.type === "solid")) {
-    const bg = resolveColor(fill.fgColor, palette) ?? resolveColor(fill.bgColor, palette);
-    if (bg && bg.toUpperCase() !== "#FFFFFF") parts.push(`background:${bg}`);
+  if (fill && fill.type === "pattern" && fill.pattern === "solid") {
+    const fg = "fgColor" in fill ? cellColor(fill.fgColor, palette) : null;
+    const bg = "bgColor" in fill ? cellColor(fill.bgColor, palette) : null;
+    const color = fg ?? bg;
+    if (color && color.toUpperCase() !== "#FFFFFF") parts.push(`background:${color}`);
   }
 
   const b = style.border ?? {};
-  const top = borderCss(b.top, palette), bottom = borderCss(b.bottom, palette), left = borderCss(b.left, palette), right = borderCss(b.right, palette);
+  const top = borderCss(b.top, palette);
+  const bottom = borderCss(b.bottom, palette);
+  const left = borderCss(b.left, palette);
+  const right = borderCss(b.right, palette);
   if (top || bottom || left || right) {
     parts.push(`border:${top ?? "none"}`);
     if (top && bottom) parts.push(`border-bottom:${bottom}`);
@@ -252,27 +255,31 @@ function cellStyleCss(cell: any, palette: ThemePalette): string {
 
   const align = style.alignment ?? {};
   if (align.horizontal) parts.push(`text-align:${align.horizontal}`);
-  if (align.vertical) parts.push(`vertical-align:${align.vertical === "center" ? "middle" : align.vertical}`);
+  if (align.vertical) parts.push(`vertical-align:${align.vertical}`);
   if (align.wrapText) parts.push("white-space:pre-wrap");
 
   return parts.join(";");
 }
 
-function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePalette, T: Partial<Dict> = {}): void {
-  const rowCount = Math.min(ws.rowCount ?? 0, MAX_ROWS);
-  const colCount = Math.min(ws.columnCount ?? 0, MAX_COLS);
-  if (!rowCount || !colCount) {
-    content.createDiv({ cls: "any-viewer-empty", text: T.emptySheet ?? "(empty sheet)" });
-    return;
+function cellLink(cell: Cell): string | null {
+  const value = cell.value;
+  if (value && typeof value === "object" && !Array.isArray(value) && !(value instanceof Date)) {
+    if ("hyperlink" in value && typeof value.hyperlink === "string" && /^https?:\/\//i.test(value.hyperlink)) {
+      return value.hyperlink;
+    }
   }
+  return null;
+}
 
-  // Merge map: master cell -> range; covered cell -> master coords
-  // (exceljs exposes merge ranges on ws.model.merges, not ws.merges)
-  const mergeRefs: string[] = ws.model?.merges ?? ws.merges ?? [];
+function renderWorksheetExcelJS(content: HTMLElement, ws: Worksheet, palette: ThemePalette, T: Partial<Dict>): void {
+  // Merge ranges live on ws.model.merges (exceljs has no public ws.merges).
+  const model = ws.model;
+  const mergeRefs: string[] = model?.merges ?? [];
+
   const masterOf = new Map<string, string>();
   const spanOf = new Map<string, { colspan: number; rowspan: number }>();
   for (const ref of mergeRefs) {
-    const range = parseRange(ref);
+    const range = parseRange(String(ref));
     if (!range) continue;
     spanOf.set(`${range.sr},${range.sc}`, {
       colspan: range.ec - range.sc + 1,
@@ -285,86 +292,74 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: any, palette: ThemePal
     }
   }
 
+  const rowCount = Math.min(ws.rowCount ?? 0, MAX_ROWS);
+  const colCount = Math.min(ws.columnCount ?? 0, MAX_COLS);
+  if (!rowCount || !colCount) {
+    content.createDiv({ cls: "any-viewer-empty", text: T.emptySheet ?? "(empty sheet)" });
+    return;
+  }
+
   const table = content.createEl("table", { cls: "any-viewer-sheet-table" });
 
   const colgroup = table.createEl("colgroup");
+  const defaultColWidth = ws.properties?.defaultColWidth ?? 8.43;
   for (let c = 1; c <= colCount; c++) {
-    let width: number | undefined;
-    try {
-      width = ws.getColumn(c)?.width;
-    } catch (e) {
-      /* ignore */
-    }
-    const col = colgroup.createEl("col");
+    const width = ws.getColumn(c)?.width;
     // explicit width, else Excel's default column width (~8.43 chars)
-    const charWidth = width && width > 0 ? width : ws.properties?.defaultColWidth ?? 8.43;
+    const charWidth = width && width > 0 ? width : defaultColWidth;
+    const col = colgroup.createEl("col");
     col.style.width = `${Math.min(Math.round(charWidth * 7 + 5), 400)}px`;
   }
 
   const defaultRowHeightPt: number | undefined = ws.properties?.defaultRowHeight;
-  const rows = new Map<number, any>();
+  const rows = new Map<number, HTMLElement>();
   for (let r = 1; r <= rowCount; r++) {
     const tr = table.createEl("tr");
-    let height: number | undefined;
-    try {
-      height = ws.getRow(r)?.height;
-    } catch (e) {
-      /* ignore */
-    }
+    const height = ws.getRow(r)?.height;
     if (height && height > 0) tr.style.height = `${Math.round(height * 1.333)}px`;
     else if (defaultRowHeightPt && defaultRowHeightPt > 0) tr.style.minHeight = `${Math.round(defaultRowHeightPt * 1.333)}px`;
     rows.set(r, tr);
   }
 
   for (let r = 1; r <= rowCount; r++) {
-    const tr = rows.get(r)!;
+    const tr = rows.get(r);
+    if (!tr) continue;
+    const row = ws.getRow(r);
     for (let c = 1; c <= colCount; c++) {
       if (masterOf.has(`${r},${c}`)) continue; // covered by a merge
-      let cell: any = null;
-      try {
-        cell = ws.getRow(r).getCell(c);
-      } catch (e) {
-        cell = null;
-      }
+      const cell: Cell | undefined = row?.getCell(c);
       const td = tr.createEl("td");
       const span = spanOf.get(`${r},${c}`);
       if (span) {
         if (span.colspan > 1) td.setAttribute("colspan", String(span.colspan));
         if (span.rowspan > 1) td.setAttribute("rowspan", String(span.rowspan));
       }
-      const css = cell ? cellStyleCss(cell, palette) : "";
-      if (css) td.setAttribute("style", css);
-
-      let text = "";
-      let href: string | null = null;
       if (cell) {
-        text = formatValue(cell.value, cell.numFmt);
-        const v = cell.value;
-        if (v && typeof v === "object" && typeof v.hyperlink === "string" && /^https?:\/\//i.test(v.hyperlink)) {
-          href = v.hyperlink;
+        const css = cellStyleCss(cell, palette);
+        if (css) td.setAttribute("style", css);
+
+        const text = formatValue(cell.value, cell.numFmt);
+        const href = cellLink(cell);
+        if (href) {
+          td.createEl("a", { text, href, attr: { target: "_blank", rel: "noopener" } });
+        } else {
+          td.setText(text);
         }
-      }
-      if (href) {
-        td.createEl("a", { text, href, attr: { target: "_blank", rel: "noopener" } });
-      } else {
-        td.setText(text);
       }
     }
   }
 
   if ((ws.rowCount ?? 0) > MAX_ROWS || (ws.columnCount ?? 0) > MAX_COLS) {
-    content.createDiv({
-      cls: "any-viewer-sheet-truncated",
-      text: T.truncated
-        ? T.truncated(MAX_ROWS, MAX_COLS)
-        : `Sheet too large — showing first ${MAX_ROWS} rows × ${MAX_COLS} columns (open in a tab to see everything)`,
-    });
+    const note = T.truncated
+      ? T.truncated(MAX_ROWS, MAX_COLS)
+      : `Sheet too large — showing first ${MAX_ROWS} rows × ${MAX_COLS} columns (open in a tab to see everything)`;
+    content.createDiv({ cls: "any-viewer-sheet-truncated", text: note });
   }
 }
 
 /* ---------------- SheetJS (plain) ---------------- */
 
-function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer, emptyWorkbook = "(empty workbook)", emptySheet = "(empty sheet)"): void {
+function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer, emptyWorkbook: string, emptySheet: string): void {
   const wb = XLSX.read(new Uint8Array(data), { type: "array" });
   const names = wb.SheetNames;
   if (!names.length) {
@@ -378,16 +373,16 @@ function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer, emptyWorkb
   const show = (name: string) => {
     content.empty();
     const html = XLSX.utils.sheet_to_html(wb.Sheets[name], { header: "", footer: "" });
-    const holder = createDiv();
-    holder.innerHTML = html;
-    const table = holder.querySelector("table");
+    // Parse instead of innerHTML assignment; only the <table> is adopted.
+    const parsed = new DOMParser().parseFromString(html, "text/html");
+    const table = parsed.querySelector("table");
     if (table) {
-      table.addClass("any-viewer-sheet-table");
-      content.appendChild(table);
+      const adopted = document.importNode(table, true);
+      adopted.addClass("any-viewer-sheet-table");
+      content.appendChild(adopted);
     } else {
       content.createDiv({ cls: "any-viewer-empty", text: emptySheet });
     }
-    holder.remove();
   };
 
   names.forEach((name, i) => {

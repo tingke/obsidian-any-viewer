@@ -1,12 +1,13 @@
 {
   "name": "obsidian-any-viewer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Insert and preview any file type (Word/Excel/PowerPoint/HTML/CSV and more) inside Obsidian notes",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "typecheck": "tsc -noEmit -skipLibCheck"
+    "typecheck": "tsc -noEmit -skipLibCheck",
+    "lint": "eslint ."
   },
   "keywords": [
     "obsidian",
@@ -22,17 +23,23 @@
   "author": "tingke",
   "license": "MIT",
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^20.14.0",
-    "builtin-modules": "^4.0.0",
     "esbuild": "^0.24.0",
-    "obsidian": "^1.7.2",
+    "eslint": "^9.39.5",
+    "eslint-plugin-obsidianmd": "^0.4.2",
+    "globals": "^17.14.0",
+    "jiti": "^2.7.0",
+    "obsidian": "^1.14.4",
     "tslib": "^2.6.3",
-    "typescript": "^5.6.0"
+    "typescript": "^5.6.0",
+    "typescript-eslint": "^8.72.1"
   },
   "dependencies": {
     "docx-preview": "^0.4.1",
     "exceljs": "^4.4.0",
+    "jszip": "^3.10.2",
     "pptx-preview": "^1.0.7",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   }
 }

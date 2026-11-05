@@ -50,7 +50,7 @@ export default class AnyViewerPlugin extends Plugin {
     this.insertManager = new InsertManager(this);
     this.insertManager.register();
 
-    this.addRibbonIcon("paperclip", "Any Viewer — insert files / 插入任意文件", () => {
+    this.addRibbonIcon("paperclip", "Any viewer — insert files / 插入任意文件", () => {
       const editor = this.app.workspace.activeEditor as Editor | null;
       if (!editor) {
         new Notice(t(this.settings).noticeNoActiveNote);
@@ -60,12 +60,12 @@ export default class AnyViewerPlugin extends Plugin {
     });
   }
 
-  onunload(): void {
-    this.app.workspace.detachLeavesOfType(ANY_VIEW_TYPE);
-  }
+  // NOTE: no detachLeavesOfType here — Obsidian guidance is to leave leaves
+  // where the user placed them; they are re-adopted when the plugin reloads.
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const stored = (await this.loadData()) as Partial<AnyViewerSettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...stored };
   }
 
   async saveSettings(): Promise<void> {

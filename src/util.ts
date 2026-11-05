@@ -1,17 +1,6 @@
-import { App, Notice, Platform, TFile, Vault, getIcon, normalizePath } from "obsidian";
-import { t } from "./i18n";
+import { App, Notice, Platform, TFile, Vault, FileSystemAdapter, getIcon, normalizePath } from "obsidian";
 import type AnyViewerPlugin from "./main";
-
-/** Localized notice helpers that need app/settings context. */
-export function notifyOpenFailed(plugin: AnyViewerPlugin, msg: string): void {
-  new Notice(t(plugin.settings).noticeOpenFailed(msg));
-}
-export function notifyShellUnsupported(plugin: AnyViewerPlugin): void {
-  new Notice(t(plugin.settings).noticeShellUnsupported);
-}
-export function notifyRevealUnsupported(plugin: AnyViewerPlugin): void {
-  new Notice(t(plugin.settings).noticeRevealUnsupported);
-}
+import { t } from "./i18n";
 
 /** Extensions handled by each renderer. */
 export const DOCX_EXTS = ["docx"];
@@ -63,29 +52,35 @@ export function formatSize(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
 
+interface ElectronShellBridge {
+  openPath(path: string): Promise<string> | string;
+  showItemInFolder(path: string): void;
+}
+
+interface ElectronModule {
+  shell?: ElectronShellBridge;
+  remote?: { shell?: ElectronShellBridge };
+}
+
 /** Get the Electron shell bridge, defensively across Obsidian/Electron versions. */
-export function getElectronShell(): { openPath?: (p: string) => any; showItemInFolder?: (p: string) => void } | null {
+export function getElectronShell(): ElectronShellBridge | null {
   if (Platform.isMobileApp || Platform.isMobile) return null;
   try {
-    const req = (window as any).require;
+    const req = (window as unknown as { require?: (module: string) => ElectronModule }).require;
     if (typeof req !== "function") return null;
     const electron = req("electron");
     if (!electron) return null;
     return electron.shell ?? electron.remote?.shell ?? null;
-  } catch (e) {
+  } catch (err) {
+    console.error("[Any Viewer] failed to access electron shell", err);
     return null;
   }
 }
 
 /** Absolute filesystem path of a vault file (desktop only). */
 export function vaultAbsolutePath(app: App, file: TFile): string {
-  const adapter = (app.vault as any).adapter;
-  if (adapter && typeof adapter.getFullPath === "function") {
-    try {
-      return adapter.getFullPath(file.path);
-    } catch (e) {
-      /* fall through */
-    }
+  if (app.vault.adapter instanceof FileSystemAdapter) {
+    return app.vault.adapter.getFullPath(file.path);
   }
   return file.path;
 }
@@ -93,36 +88,47 @@ export function vaultAbsolutePath(app: App, file: TFile): string {
 /** Open a vault file with the OS default application. */
 export function openFileExternally(plugin: AnyViewerPlugin, file: TFile): void {
   const app = plugin.app;
-  const shell: any = getElectronShell();
+  const shell = getElectronShell();
   const path = vaultAbsolutePath(app, file);
   if (shell && typeof shell.openPath === "function") {
     try {
       const res = shell.openPath(path);
-      if (res && typeof res.then === "function") {
-        res.then((errMsg: string) => {
-          if (errMsg) notifyOpenFailed(plugin, errMsg);
-        });
+      if (typeof res === "string") {
+        if (res) new Notice(t(plugin.settings).noticeOpenFailed(res));
+        return;
       }
+      void res.then((errMsg: string) => {
+        if (errMsg) new Notice(t(plugin.settings).noticeOpenFailed(errMsg));
+      });
       return;
-    } catch (e) {
-      console.error("[Any Viewer] openPath failed", e);
+    } catch (err) {
+      console.error("[Any Viewer] openPath failed", err);
     }
   }
-  notifyShellUnsupported(plugin);
+  new Notice(t(plugin.settings).noticeShellUnsupported);
 }
 
 /** Reveal a vault file in the system file manager. */
 export function revealFileInSystem(plugin: AnyViewerPlugin, file: TFile): void {
-  const shell: any = getElectronShell();
+  const shell = getElectronShell();
   if (shell && typeof shell.showItemInFolder === "function") {
     try {
       shell.showItemInFolder(vaultAbsolutePath(plugin.app, file));
       return;
-    } catch (e) {
-      console.error("[Any Viewer] showItemInFolder failed", e);
+    } catch (err) {
+      console.error("[Any Viewer] showItemInFolder failed", err);
     }
   }
-  notifyRevealUnsupported(plugin);
+  new Notice(t(plugin.settings).noticeRevealUnsupported);
+}
+
+interface VaultWithAttachmentConfig {
+  getConfig?(key: string): string;
+}
+
+function attachmentFolderConfig(app: App): string {
+  const vault = app.vault as Vault & Partial<VaultWithAttachmentConfig>;
+  return vault.getConfig?.("attachmentFolderPath") ?? "";
 }
 
 /** Pick a non-conflicting vault path for `filename` inside `folder` ('' = vault root). */
@@ -149,9 +155,9 @@ export async function ensureFolder(vault: Vault, folder: string): Promise<void> 
     if (!vault.getAbstractFileByPath(current)) {
       try {
         await vault.createFolder(current);
-      } catch (e) {
+      } catch (err) {
         // may already exist due to a race
-        if (!vault.getAbstractFileByPath(current)) throw e;
+        if (!vault.getAbstractFileByPath(current)) throw err;
       }
     }
   }
@@ -159,14 +165,14 @@ export async function ensureFolder(vault: Vault, folder: string): Promise<void> 
 
 /** Best linktext (basename if unique, else full path) for a file. */
 export function linktextFor(app: App, file: TFile, sourcePath: string): string {
-  const mc = app.metadataCache as any;
-  if (typeof mc.fileToLinktext === "function") {
-    try {
-      return mc.fileToLinktext(file, sourcePath);
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  const dup = app.vault.getFiles().some((f) => f !== file && f.name === file.name);
-  return dup ? file.path : file.name;
+  return app.metadataCache.fileToLinktext(file, sourcePath);
+}
+
+/** Obsidian's attachment folder config values ('./' = note folder, '' = vault root). */
+export function resolveAttachmentFolder(app: App, sourcePath: string, noteDir: string): string {
+  const cfg = attachmentFolderConfig(app);
+  if (cfg === "./") return noteDir;
+  if (cfg.startsWith("./")) return cfg.slice(2) ? `${noteDir ? noteDir + "/" : ""}${cfg.slice(2)}` : noteDir;
+  if (!cfg || cfg === "/") return "";
+  return cfg;
 }

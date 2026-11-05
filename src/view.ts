@@ -20,7 +20,7 @@ export class AnyViewerFileView extends FileView {
       if (this.file) openFileExternally(this.plugin, this.file);
     });
     this.addAction("refresh-cw", "Reload / 重新加载", () => {
-      if (this.file) this.render(this.file);
+      if (this.file) void this.render(this.file);
     });
   }
 
@@ -61,7 +61,7 @@ export class AnyViewerFileView extends FileView {
 
     // pptx & html need a laid-out pane height; wait one frame before measuring
     if (kind === "pptx" || kind === "html") {
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await new Promise((r) => window.requestAnimationFrame(() => r(null)));
       if (token !== this.currentRender) return;
     }
 

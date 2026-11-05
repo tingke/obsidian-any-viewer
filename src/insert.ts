@@ -1,6 +1,6 @@
 import { Editor, MarkdownFileInfo, Notice, TFile } from "obsidian";
 import AnyViewerPlugin from "./main";
-import { chooseFilePath, ensureFolder, linktextFor } from "./util";
+import { chooseFilePath, ensureFolder, linktextFor, resolveAttachmentFolder } from "./util";
 import { t } from "./i18n";
 
 /** Commands + paste/drop interception that copy files into the vault and insert embeds. */
@@ -30,10 +30,11 @@ export class InsertManager {
 
   /** Open the system file picker and insert the chosen file(s). */
   pickAndInsert(editor: Editor, sourcePath: string): void {
-    const input = document.createElement("input");
-    input.type = "file";
+    const input = createEl("input", {
+      type: "file",
+      cls: "any-viewer-hidden-input",
+    });
     input.multiple = true;
-    input.style.display = "none";
     document.body.appendChild(input);
 
     input.addEventListener("change", () => {
@@ -122,16 +123,18 @@ export class InsertManager {
     const app = this.plugin.app;
     const s = this.plugin.settings;
 
-    if (s.attachmentLocation === "custom") return s.customAttachmentPath;
+    if (s.attachmentLocation === "custom") {
+      const custom = s.customAttachmentPath.trim() || "attachments";
+      const noteDir = this.dirOf(sourcePath);
+      // support the same './folder' convention as Obsidian's own config
+      if (custom === "./") return noteDir;
+      if (custom.startsWith("./")) return custom.slice(2) ? `${noteDir ? noteDir + "/" : ""}${custom.slice(2)}` : noteDir;
+      return custom;
+    }
     if (s.attachmentLocation === "current") return this.dirOf(sourcePath);
 
     // Follow Obsidian's own attachment folder setting.
-    const cfg: string = (app.vault as any).getConfig?.("attachmentFolderPath") ?? "";
-    const noteDir = this.dirOf(sourcePath);
-    if (cfg === "./") return noteDir;
-    if (cfg.startsWith("./")) return cfg.slice(2) ? `${noteDir ? noteDir + "/" : ""}${cfg.slice(2)}` : noteDir;
-    if (!cfg || cfg === "/") return "";
-    return cfg;
+    return resolveAttachmentFolder(app, sourcePath, this.dirOf(sourcePath));
   }
 
   private dirOf(path: string): string {

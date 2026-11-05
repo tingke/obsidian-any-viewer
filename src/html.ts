@@ -1,4 +1,4 @@
-import { TFile } from "obsidian";
+import { requestUrl } from "obsidian";
 
 /**
  * Renders an HTML file inside a sandboxed iframe built with `srcdoc`.
@@ -18,7 +18,7 @@ export async function renderHtmlFrame(
   opts: { allowScripts: boolean; height?: number; width?: number; maxHeight?: number; resourceUrl?: string }
 ): Promise<void> {
   const text = new TextDecoder().decode(data);
-  const doc = new DOMParser().parseFromString(text, "text/html");
+  const parsed = new DOMParser().parseFromString(text, "text/html");
 
   const baseDir = opts.resourceUrl
     ? opts.resourceUrl.slice(0, opts.resourceUrl.lastIndexOf("/") + 1)
@@ -27,35 +27,35 @@ export async function renderHtmlFrame(
     if (!baseDir) return u;
     try {
       return new URL(u, baseDir).toString();
-    } catch (e) {
+    } catch {
+      console.warn("[Any Viewer] failed to resolve asset URL", u);
       return u;
     }
   };
   const isExternal = (u: string) => /^(https?:|data:|blob:|app:)/i.test(u);
 
   // absolutize relative asset URLs (srcdoc inherits app://obsidian.md as base)
-  doc.querySelectorAll("img[src], script[src], source[src], video[src], audio[src], track[src]").forEach((el) => {
+  parsed.querySelectorAll("img[src], script[src], source[src], video[src], audio[src], track[src]").forEach((el) => {
     const s = el.getAttribute("src");
     if (s && !isExternal(s)) el.setAttribute("src", absolute(s));
   });
-  doc.querySelectorAll("link[href]").forEach((el) => {
+  parsed.querySelectorAll("link[href]").forEach((el) => {
     const h = el.getAttribute("href");
     if (h && !isExternal(h)) el.setAttribute("href", absolute(h));
   });
 
   // external stylesheets are CSP-blocked inside the iframe — inline them
-  const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
+  const links = Array.from(parsed.querySelectorAll('link[rel="stylesheet"][href]'));
   await Promise.all(
     links.map(async (link) => {
       const href = link.getAttribute("href")!;
       try {
-        const res = await fetch(href);
-        if (!res.ok) return;
-        const css = await res.text();
-        const style = doc.createElement("style");
-        style.textContent = css;
-        link.replaceWith(style);
-      } catch (e) {
+        const response = await requestUrl(href);
+        const style = createEl("style");
+        style.textContent = response.text;
+        link.replaceWith(parsed.importNode(style, true));
+      } catch (err) {
+        console.warn("[Any Viewer] failed to inline stylesheet", href, String(err));
         /* keep the original link */
       }
     })
@@ -75,7 +75,7 @@ export async function renderHtmlFrame(
 
   // `srcdoc` carries the markup on the element itself, so re-attaching the
   // iframe (e.g. when Obsidian re-renders the note) reloads it cleanly.
-  frame.srcdoc = `<!DOCTYPE html>${doc.documentElement.outerHTML}`;
+  frame.srcdoc = `<!DOCTYPE html>${parsed.documentElement.outerHTML}`;
 
   // Size the frame: explicit height hint wins; otherwise fit the content,
   // capped by the embed max height.
@@ -95,18 +95,19 @@ export async function renderHtmlFrame(
     try {
       const docEl = frame.contentDocument?.documentElement;
       const body = frame.contentDocument?.body;
-      const ro = new ResizeObserver(() => apply());
-      if (docEl) ro.observe(docEl);
-      if (body) ro.observe(body);
+      const observer = new ResizeObserver(() => apply());
+      if (docEl) observer.observe(docEl);
+      if (body) observer.observe(body);
       // stop observing once our container goes away
-      const reaper = setInterval(() => {
+      const reaper = window.setInterval(() => {
         if (!container.isConnected) {
-          ro.disconnect();
-          clearInterval(reaper);
+          observer.disconnect();
+          window.clearInterval(reaper);
         }
       }, 10_000);
-    } catch (e) {
-      /* cross-origin or not ready — fixed sizing still applies */
+    } catch (err) {
+      console.warn("[Any Viewer] iframe height observation unavailable", err);
+      /* fixed sizing still applies */
     }
   });
 }

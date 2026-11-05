@@ -1,3 +1,4 @@
+import { getLanguage } from "obsidian";
 import { AnyViewerSettings } from "./settings";
 
 export type UiLanguage = "auto" | "zh" | "en";
@@ -181,9 +182,9 @@ const DICTS: Record<"zh" | "en", Dict> = { zh, en };
 export function resolveLang(setting: UiLanguage): "zh" | "en" {
   if (setting === "zh" || setting === "en") return setting;
   try {
-    const obsidianLang = (window.localStorage.getItem("language") ?? "").toLowerCase();
-    return obsidianLang.startsWith("zh") ? "zh" : "en";
-  } catch (e) {
+    return getLanguage().toLowerCase().startsWith("zh") ? "zh" : "en";
+  } catch (err) {
+    console.warn("[Any Viewer] failed to detect language", err);
     return "en";
   }
 }

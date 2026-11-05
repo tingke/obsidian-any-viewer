@@ -42,7 +42,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
     title.addClass("is-clickable");
     title.setAttribute("aria-label", T.clickToOpenInTab);
     title.addEventListener("click", () => {
-      app.workspace.getLeaf("tab").openFile(file);
+      void app.workspace.getLeaf("tab").openFile(file);
     });
 
     const openTabBtn = header.createEl("button", {
@@ -52,7 +52,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
     const tabIcon = getIcon("file-output");
     if (tabIcon) openTabBtn.appendChild(tabIcon as unknown as HTMLElement);
     openTabBtn.addEventListener("click", () => {
-      app.workspace.getLeaf("tab").openFile(file);
+      void app.workspace.getLeaf("tab").openFile(file);
     });
 
     const extBtn = header.createEl("button", {
@@ -82,7 +82,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
   const loading = stage.createDiv({ cls: "any-viewer-loading", text: T.loading });
   // Double-click anywhere on the embed content opens the file in a tab.
   stage.addEventListener("dblclick", () => {
-    app.workspace.getLeaf("tab").openFile(file);
+    void app.workspace.getLeaf("tab").openFile(file);
   });
 
   try {
@@ -99,14 +99,8 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
       const height = opts.pptxHeight ?? Math.round((width * 9) / 16);
       renderPptx(stage, data, width, height);
     } else if (kind === "html") {
-      let resourceUrl: string | undefined;
-      const vault = app.vault as any;
-      try {
-        if (typeof vault.getResourcePath === "function") resourceUrl = vault.getResourcePath(file);
-        else if (typeof vault.adapter?.getResourcePath === "function") resourceUrl = vault.adapter.getResourcePath(file.path);
-      } catch (e) {
-        resourceUrl = undefined;
-      }
+      // Vault.getResourcePath(path) is a documented API since 1.7.2.
+      const resourceUrl = app.vault.getResourcePath(file);
       await renderHtmlFrame(stage, data, {
         allowScripts: opts.allowScripts ?? true,
         height: opts.heightHint,
@@ -161,7 +155,7 @@ export class EmbedRenderer {
     if (!src) return;
     try {
       src = decodeURIComponent(src);
-    } catch (e) {
+    } catch {
       /* keep raw */
     }
 
@@ -220,7 +214,7 @@ export class EmbedRenderer {
       if (finished) return;
       finished = true;
       observer.disconnect();
-      clearTimeout(timer);
+      window.clearTimeout(timer);
       if (span.isConnected) this.takeover(span, file, kind, widthHint, heightHint);
     };
 
@@ -229,7 +223,7 @@ export class EmbedRenderer {
     });
     observer.observe(span, { childList: true, attributes: true, attributeFilter: ["class"] });
 
-    const timer = setTimeout(finish, EmbedRenderer.TAKEOVER_TIMEOUT_MS);
+    const timer = window.setTimeout(finish, EmbedRenderer.TAKEOVER_TIMEOUT_MS);
   }
 
   /** Replace the span content with our rendering; re-apply if Obsidian rewrites it. */
@@ -244,7 +238,7 @@ export class EmbedRenderer {
         span.addClass("has-width");
         span.style.width = `${widthHint}px`;
       }
-      renderFileInto(this.plugin, frame, file, kind, {
+      void renderFileInto(this.plugin, frame, file, kind, {
         widthHint,
         heightHint,
         maxHeight: s.embedMaxHeight,
