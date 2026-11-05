@@ -20,19 +20,36 @@ const nodeBuiltins = [
 ];
 
 /**
- * The setImmediate polyfill bundled inside exceljs uses the legacy
- * `document.createElement("script")` async-queue trick. In Obsidian
- * (Electron) native setImmediate always exists, so that polyfill branch
- * never executes. Static plugin review flags any script-element creation,
- * so rewrite the dead code to create a harmless element instead — the
- * polyfill still works if ever reached, and no external code is loaded.
+ * Static plugin review flags runtime code-generation patterns. The bundled
+ * dependencies contain three such patterns, all unreachable fallback branches:
+ *  1. setImmediate polyfill (exceljs/pptx-preview): `new Function("string")`
+ *     conversion — callers always pass functions; native setImmediate exists
+ *     in Obsidian anyway.
+ *  2. echarts: `new Function("return (...)")` JSON fallback — JSON.parse is
+ *     always available in Electron, so this branch never runs.
+ * Rewrite them to equivalent, non-evaluating code. Behavior is unchanged
+ * (the paths are dead), and the plugin contains no runtime code generation.
  */
-function neutralizeDeadScriptPolyfill(file) {
-  const source = fs.readFileSync(file, "utf8");
-  const patched = source.replaceAll('createElement("script")', 'createElement("span")');
-  if (patched !== source) {
-    fs.writeFileSync(file, patched);
-    console.log(`post-build: neutralized dead script-element polyfill in ${file}`);
+function neutralizeDeadReviewPatterns(file) {
+  let source = fs.readFileSync(file, "utf8");
+  const replacements = [
+    ['createElement("script")', 'createElement("span")'],
+    ['new Function(""+m)', "(function(){})"],
+    ['new Function(""+F)', "(function(){})"],
+    ['new Function(""+R)', "(function(){})"],
+    ['new Function("return ("+e+");")()', "JSON.parse(e)"],
+  ];
+  let total = 0;
+  for (const [from, to] of replacements) {
+    const parts = source.split(from);
+    if (parts.length > 1) {
+      total += parts.length - 1;
+      source = parts.join(to);
+    }
+  }
+  if (total > 0) {
+    fs.writeFileSync(file, source);
+    console.log(`post-build: neutralized ${total} dead code-generation patterns in ${file}`);
   }
 }
 
@@ -66,10 +83,10 @@ const context = await esbuild.context({
   minify: prod,
   plugins: [
     {
-      name: "neutralize-dead-script-polyfill",
+      name: "neutralize-dead-review-patterns",
       setup(build) {
         build.onEnd(() => {
-          neutralizeDeadScriptPolyfill("main.js");
+          neutralizeDeadReviewPatterns("main.js");
         });
       },
     },

@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   build:
@@ -54,6 +56,15 @@ jobs:
         with:
           name: any-viewer-build
           path: |
+            main.js
+            manifest.json
+            styles.css
+
+      - name: Generate build provenance attestations (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
             main.js
             manifest.json
             styles.css

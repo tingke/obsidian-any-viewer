@@ -1,6 +1,6 @@
 {
   "name": "obsidian-any-viewer",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Insert and preview any file type (Word/Excel/PowerPoint/HTML/CSV and more) inside Obsidian notes",
   "main": "main.js",
   "scripts": {
@@ -43,6 +43,7 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "overrides": {
-    "uuid": "^11.1.1"
+    "uuid": "^11.1.1",
+    "echarts": "^6.1.0"
   }
 }
