@@ -5,3 +5,4 @@ package-lock.json.bak
 .ssh_tmp/
 # main.js is intentionally tracked: Obsidian's plugin review requires the
 # built artifact to be inspectable in the repository.
+smoke.cjs
