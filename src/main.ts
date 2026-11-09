@@ -10,6 +10,7 @@ import { t } from "./i18n";
 export default class AnyViewerPlugin extends Plugin {
   settings: AnyViewerSettings = { ...DEFAULT_SETTINGS };
   private insertManager?: InsertManager;
+  private embedRenderer?: EmbedRenderer;
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -44,7 +45,8 @@ export default class AnyViewerPlugin extends Plugin {
     }
 
     // Inline `![[file.ext]]` embeds in notes.
-    new EmbedRenderer(this).register();
+    this.embedRenderer = new EmbedRenderer(this);
+    this.embedRenderer.register();
 
     // Insert commands + paste/drop interception.
     this.insertManager = new InsertManager(this);
@@ -62,6 +64,19 @@ export default class AnyViewerPlugin extends Plugin {
 
   // NOTE: no detachLeavesOfType here — Obsidian guidance is to leave leaves
   // where the user placed them; they are re-adopted when the plugin reloads.
+
+  /**
+   * Re-render every surface that bakes translated strings at render time.
+   * Called right after the UI language setting changes so switching is
+   * instant everywhere — no restart, no settings-modal reload.
+   */
+  refreshLocalizedUi(): void {
+    for (const leaf of this.app.workspace.getLeavesOfType(ANY_VIEW_TYPE)) {
+      const view = leaf.view;
+      if (view instanceof AnyViewerFileView) view.rerender();
+    }
+    this.embedRenderer?.refreshAll();
+  }
 
   async loadSettings(): Promise<void> {
     const stored = (await this.loadData()) as Partial<AnyViewerSettings> | null;

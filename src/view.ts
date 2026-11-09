@@ -40,6 +40,11 @@ export class AnyViewerFileView extends FileView {
     await this.render(file);
   }
 
+  /** Re-render the current file (e.g. right after the UI language changes). */
+  rerender(): void {
+    if (this.file) void this.render(this.file);
+  }
+
   private async render(file: TFile): Promise<void> {
     const token = ++this.currentRender;
     const s = this.plugin.settings;

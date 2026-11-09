@@ -160,5 +160,28 @@ export class AnyViewerSettingTab extends PluginSettingTab {
       store[key] = value;
     }
     void this.plugin.saveSettings();
+    if (key === "language") {
+      // Every label/desc/heading is computed from t(settings) inside
+      // getSettingDefinitions(); Obsidian caches settingItems at addSettingTab
+      // time and only calls refreshDomState() after a control change, so the
+      // tab stayed in the old language until an Obsidian restart. update()
+      // re-runs getSettingDefinitions(), refreshes the search index and
+      // re-renders the open tab in the new language right away (no-op when
+      // the tab is not currently displayed). Deferred one tick so the
+      // framework finishes its own post-change bookkeeping first.
+      window.setTimeout(() => {
+        // The declarative re-render skips the row that holds keyboard focus;
+        // the language dropdown keeps focus after a change, so blur it first
+        // or its own label would stay in the old language.
+        const active = document.activeElement;
+        if (active instanceof HTMLElement && this.containerEl.contains(active)) {
+          active.blur();
+        }
+        this.update();
+        // Open tab views and inline embeds bake translated strings at render
+        // time — re-render them so the switch is instant everywhere.
+        this.plugin.refreshLocalizedUi();
+      }, 0);
+    }
   }
 }

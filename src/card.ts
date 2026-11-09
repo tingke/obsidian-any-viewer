@@ -8,6 +8,9 @@ export function buildFileCard(plugin: AnyViewerPlugin, file: TFile, opts?: { onO
   const T = t(plugin.settings);
   const card = createDiv({ cls: "any-viewer-card" });
   card.setAttribute("title", T.cardTooltip(file.path));
+  card.setAttribute("role", "button");
+  card.setAttribute("tabindex", "0");
+  card.setAttribute("aria-label", `${file.name} — ${T.cardOpenLabel}`);
 
   const iconWrap = card.createDiv({ cls: "any-viewer-card-icon" });
   iconWrap.appendChild(iconEl(file.extension));
@@ -33,9 +36,16 @@ export function buildFileCard(plugin: AnyViewerPlugin, file: TFile, opts?: { onO
     opts?.onOpenExternally?.();
   });
 
-  card.addEventListener("click", (e) => {
-    if ((e as MouseEvent).shiftKey) revealFileInSystem(plugin, file);
+  const open = (shiftKey = false) => {
+    if (shiftKey) revealFileInSystem(plugin, file);
     else openFileExternally(plugin, file);
+  };
+
+  card.addEventListener("click", (e) => open((e as MouseEvent).shiftKey));
+  card.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    e.preventDefault();
+    open();
   });
 
   return card;

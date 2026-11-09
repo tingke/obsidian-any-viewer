@@ -40,9 +40,15 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
     }
     const title = header.createDiv({ cls: "any-viewer-header-title", text: file.name });
     title.addClass("is-clickable");
+    title.setAttribute("role", "button");
+    title.setAttribute("tabindex", "0");
     title.setAttribute("aria-label", T.clickToOpenInTab);
-    title.addEventListener("click", () => {
-      void app.workspace.getLeaf("tab").openFile(file);
+    const openInTab = () => void app.workspace.getLeaf("tab").openFile(file);
+    title.addEventListener("click", openInTab);
+    title.addEventListener("keydown", (ev: KeyboardEvent) => {
+      if (ev.key !== "Enter" && ev.key !== " ") return;
+      ev.preventDefault();
+      openInTab();
     });
 
     const openTabBtn = header.createEl("button", {
@@ -65,6 +71,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
   }
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
+  stage.setAttribute("aria-live", "polite");
   // The card width is applied to the outer embed span (has-width); content keeps
   // its natural size and scrolls inside. pptx & html manage their own scrolling.
   const effectiveHeight = opts.heightHint ?? opts.maxHeight;
@@ -80,6 +87,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
   }
 
   const loading = stage.createDiv({ cls: "any-viewer-loading", text: T.loading });
+  stage.setAttribute("aria-busy", "true");
   // Double-click anywhere on the embed content opens the file in a tab.
   stage.addEventListener("dblclick", () => {
     void app.workspace.getLeaf("tab").openFile(file);
@@ -88,6 +96,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
   try {
     const data = await app.vault.readBinary(file);
     loading.remove();
+    stage.setAttribute("aria-busy", "false");
 
     if (kind === "docx") {
       await renderDocx(stage, data);
@@ -111,6 +120,7 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
   } catch (err) {
     console.error("[Any Viewer] render failed:", err);
     loading.remove();
+    stage.setAttribute("aria-busy", "false");
     stage.empty();
     const errBox = stage.createDiv({ cls: "any-viewer-error", text: T.renderFailed(String((err as Error)?.message ?? err)) });
     errBox.appendChild(buildFileCard(plugin, file));
@@ -129,7 +139,31 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
 export class EmbedRenderer {
   private static readonly TAKEOVER_TIMEOUT_MS = 800;
 
+  /** Live embeds: span -> re-render closure. Lets refreshAll() re-render
+   * every connected embed (e.g. right after the UI language changes). */
+  private readonly live = new Map<HTMLElement, () => void>();
+
   constructor(private plugin: AnyViewerPlugin) {}
+
+  /**
+   * Re-render every still-connected embed so render-time strings (header
+   * buttons, tooltips, sheet messages) follow a language switch instantly.
+   * Detached spans are pruned; heavy re-reads are acceptable here because a
+   * language switch is a rare, explicit user action.
+   */
+  refreshAll(): void {
+    for (const [span, render] of this.live) {
+      if (!span.isConnected) {
+        this.live.delete(span);
+        continue;
+      }
+      try {
+        render();
+      } catch (err) {
+        console.error("[Any Viewer] embed refresh failed:", err);
+      }
+    }
+  }
 
   register(): void {
     this.plugin.registerMarkdownPostProcessor((el, ctx) => this.process(el, ctx));
@@ -251,6 +285,7 @@ export class EmbedRenderer {
     };
 
     render();
+    this.live.set(span, render);
 
     // Clicking the embed content should NOT navigate (Obsidian's own handler
     // on the embed opens the linked file). Intercept in the capture phase,
@@ -270,6 +305,7 @@ export class EmbedRenderer {
     const guard = new MutationObserver(() => {
       if (!span.isConnected) {
         guard.disconnect();
+        this.live.delete(span);
         return;
       }
       if (!span.querySelector(":scope > .any-viewer-frame")) render();

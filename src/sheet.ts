@@ -108,11 +108,15 @@ async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer, T: P
     const btn = tabBar.createEl("button", {
       cls: `any-viewer-tab${i === 0 ? " is-active" : ""}`,
       text: ws.name,
-      attr: { type: "button" },
+      attr: { type: "button", role: "tab", "aria-selected": i === 0 ? "true" : "false" },
     });
     btn.addEventListener("click", () => {
-      tabBar.querySelectorAll(".any-viewer-tab").forEach((b) => b.classList.remove("is-active"));
+      tabBar.querySelectorAll<HTMLElement>(".any-viewer-tab").forEach((b) => {
+        b.classList.remove("is-active");
+        b.setAttribute("aria-selected", "false");
+      });
       btn.classList.add("is-active");
+      btn.setAttribute("aria-selected", "true");
       show(ws);
     });
   });
@@ -389,11 +393,15 @@ function renderWithSheetJS(container: HTMLElement, data: ArrayBuffer, emptyWorkb
     const btn = tabBar.createEl("button", {
       cls: `any-viewer-tab${i === 0 ? " is-active" : ""}`,
       text: name,
-      attr: { type: "button" },
+      attr: { type: "button", role: "tab", "aria-selected": i === 0 ? "true" : "false" },
     });
     btn.addEventListener("click", () => {
-      tabBar.querySelectorAll(".any-viewer-tab").forEach((b) => b.classList.remove("is-active"));
+      tabBar.querySelectorAll<HTMLElement>(".any-viewer-tab").forEach((b) => {
+        b.classList.remove("is-active");
+        b.setAttribute("aria-selected", "false");
+      });
       btn.classList.add("is-active");
+      btn.setAttribute("aria-selected", "true");
       show(name);
     });
   });
