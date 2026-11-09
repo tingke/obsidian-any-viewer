@@ -78,6 +78,9 @@ export class AnyViewerFileView extends FileView {
       showHeader: true,
       allowScripts: s.htmlAllowScripts,
     });
-    frame.querySelector(".any-viewer-stage")?.classList.add("fills");
+    // pptx keeps its own internal scrolling — "fills" would stack a second
+    // scrollbar on top of the viewer's own one in the tab view.
+    const stage = frame.querySelector(".any-viewer-stage");
+    if (stage && !stage.classList.contains("no-scroll")) stage.classList.add("fills");
   }
 }

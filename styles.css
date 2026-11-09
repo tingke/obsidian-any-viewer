@@ -132,6 +132,30 @@
   overflow: auto;
 }
 
+/* pptx manages its own scrolling — never stack a stage scrollbar on top of it */
+.any-viewer-stage.fills.no-scroll {
+  overflow: hidden;
+}
+
+/* slim down pptx-preview's built-in scrollbars */
+.any-viewer-pptx ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.any-viewer-pptx ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.any-viewer-pptx ::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.any-viewer-pptx ::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
+
 .any-viewer-loading {
   display: flex;
   align-items: center;

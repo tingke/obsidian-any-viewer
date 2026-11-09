@@ -204,17 +204,31 @@ function formatValue(value: CellValue, numFmt: string | undefined): string {
   const raw = valueText(value);
   if (numFmt && typeof value === "number" && Number.isFinite(value)) {
     try {
+      // Quoted literals (currency symbols, units) survive as text around the number.
+      const literal = (numFmt.match(/"[^"]*"/g) ?? []).join("").replace(/"/g, "");
       const fmt = numFmt.toLowerCase();
       if (fmt.includes("%")) {
-        const decimals = (fmt.split(".").pop() ?? "").replace(/[^0#]/g, "").length;
-        return (value * 100).toFixed(decimals) + "%";
+        const numeric = numFmt.replace(/"[^"]*"/g, "");
+        const decimals = numeric.includes(".")
+          ? (numeric.split(".").pop() ?? "").replace(/[^0#]/g, "").length
+          : 0;
+        return `${literal}${(value * 100).toFixed(decimals)}%`;
       }
       if (fmt.includes("yy") || fmt.includes("dd") || fmt.includes("mm")) return raw;
-      const decimals = (fmt.split(".").pop() ?? "").replace(/[^0#]/g, "").length;
-      if (fmt.includes(",")) {
-        return value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-      }
-      if (decimals > 0) return value.toFixed(decimals);
+      // Strip quoted literals and [color] sections before reading digit placeholders.
+      const numeric = numFmt.replace(/"[^"]*"/g, "").replace(/\[[^\]]*\]/g, "");
+      if (!/[0#]/.test(numeric)) return raw; // "General" or text-only format
+      const decimals = numeric.includes(".")
+        ? (numeric.split(".").pop() ?? "").replace(/[^0#]/g, "").length
+        : 0;
+      const body =
+        numeric.includes(",") || decimals > 0
+          ? value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+          : String(Math.round(value));
+      // Literal before the digits -> prefix ("¥1,200"); after -> suffix ("1,200元").
+      const lastDigit = Math.max(numFmt.lastIndexOf("0"), numFmt.lastIndexOf("#"));
+      const literalEnd = numFmt.lastIndexOf('"');
+      return literalEnd > lastDigit ? body + literal : literal + body;
     } catch (err) {
       console.warn("[Any Viewer] number formatting failed", err);
       return raw;
