@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Any Viewer — 在 Obsidian 里直接预览 Word / Excel / PPT</title>
+<meta name="description" content="免费开源的 Obsidian 插件：把 Word、Excel、PowerPoint、HTML、CSV 直接嵌入笔记实时预览，插入即看，无需切换应用，全程本地运行。">
+<meta property="og:title" content="Any Viewer — 在 Obsidian 里直接预览 Word / Excel / PPT">
+<meta property="og:description" content="插入即预览，样式原样还原，全程本地运行。免费开源的 Obsidian 插件。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://tingke.github.io/obsidian-any-viewer/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b5cf6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48'/%3E%3C/svg%3E">
+<script>
+  (function () {
+    var saved = localStorage.getItem("av-theme");
+    var theme = saved || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>
+<style>
+  :root {
+    --bg: #0e0d15; --bg-soft: #14131f; --card: #17162400; --panel: #171624;
+    --border: #292641; --text: #eceaf6; --muted: #9d99bb;
+    --accent: #8b5cf6; --accent-2: #6366f1; --code-bg: #12101d;
+    --chip: #1d1b2e; --shadow: 0 18px 50px rgba(0,0,0,.45);
+  }
+  [data-theme="light"] {
+    --bg: #faf9fc; --bg-soft: #f2f0f8; --panel: #ffffff;
+    --border: #e5e1ef; --text: #23203a; --muted: #6d688c;
+    --accent: #7c3aed; --accent-2: #4f46e5; --code-bg: #f1eef8;
+    --chip: #f1eefb; --shadow: 0 18px 50px rgba(80,60,160,.14);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- nav ---------- */
+  nav {
+    position: sticky; top: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px); border-bottom: 1px solid var(--border);
+  }
+  .nav-inner { display: flex; align-items: center; gap: 26px; height: 60px; }
+  .logo { display: flex; align-items: center; gap: 9px; font-weight: 700; font-size: 16px; }
+  .logo svg { width: 21px; height: 21px; color: var(--accent); }
+  .nav-links { display: flex; gap: 22px; margin-left: auto; font-size: 14px; color: var(--muted); }
+  .nav-links a:hover { color: var(--text); }
+  .icon-btn {
+    border: 1px solid var(--border); background: var(--chip); color: var(--muted);
+    width: 34px; height: 34px; border-radius: 9px; cursor: pointer; font-size: 15px;
+    display: grid; place-items: center; transition: color .15s, border-color .15s;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--accent); }
+  .gh-btn {
+    display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600;
+    padding: 7px 15px; border-radius: 9px; border: 1px solid var(--border); background: var(--chip);
+    transition: border-color .15s, transform .15s;
+  }
+  .gh-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+  @media (max-width: 640px) { .nav-links { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { padding: 84px 0 72px; display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 14px; background: var(--chip);
+    margin-bottom: 22px;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; }
+  h1 { font-size: clamp(32px, 4.6vw, 48px); line-height: 1.25; font-weight: 800; letter-spacing: -.01em; }
+  h1 .grad {
+    background: linear-gradient(100deg, var(--accent), var(--accent-2) 70%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p.lead { margin: 20px 0 30px; font-size: 16.5px; color: var(--muted); max-width: 30em; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2)); color: #fff;
+    padding: 12px 26px; border-radius: 12px; transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 10px 30px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost {
+    display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px;
+    padding: 12px 24px; border-radius: 12px; border: 1px solid var(--border); color: var(--muted);
+    transition: color .15s, border-color .15s;
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ---------- mock preview ---------- */
+  .mock { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; background: var(--bg-soft); box-shadow: var(--shadow); }
+  .mock-head {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 12.5px;
+    color: var(--muted); background: color-mix(in srgb, var(--chip) 80%, var(--bg)); border-bottom: 1px solid var(--border);
+  }
+  .mock-head .clip { color: var(--accent); display: flex; }
+  .mock-head .clip svg { width: 14px; height: 14px; }
+  .mock-head .actions { margin-left: auto; display: flex; gap: 5px; }
+  .mock-head .actions i { width: 22px; height: 12px; border-radius: 4px; background: var(--border); }
+  .mock-body { padding: 18px; display: grid; gap: 14px; }
+  .mock-code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; color: var(--muted);
+    background: var(--code-bg); border: 1px dashed var(--border); border-radius: 9px; padding: 8px 12px;
+  }
+  .mock-code b { color: var(--accent); font-weight: 600; }
+  .page {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px 14px;
+  }
+  .page .ph { border-radius: 5px; background: var(--border); }
+  .page .t { height: 13px; width: 58%; margin-bottom: 11px; background: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  .page .meta { height: 7px; width: 34%; margin-bottom: 14px; opacity: .8; }
+  .page .l { height: 7px; margin-bottom: 8px; opacity: .75; }
+  .page .l.w90 { width: 90%; } .page .l.w76 { width: 76%; } .page .l.w84 { width: 84%; }
+  .mini-table { margin-top: 6px; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; font-size: 10.5px; }
+  .mini-table .r { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; }
+  .mini-table .r > div { padding: 5px 9px; border-bottom: 1px solid var(--border); }
+  .mini-table .r:last-child > div { border-bottom: 0; }
+  .mini-table .h > div { background: color-mix(in srgb, var(--accent) 16%, var(--panel)); font-weight: 600; }
+  .mini-table .up { color: #34d399; font-weight: 600; }
+  .mini-table .down { color: #f87171; font-weight: 600; }
+  .sheet-tabs { display: flex; gap: 6px; margin-top: 10px; }
+  .sheet-tabs i { font-style: normal; font-size: 10.5px; padding: 3px 12px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .sheet-tabs i.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ---------- chips ---------- */
+  .formats { border-block: 1px solid var(--border); background: var(--bg-soft); padding: 22px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .chip {
+    font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--chip); color: var(--muted);
+  }
+  .chip b { color: var(--accent); font-weight: 700; margin-right: 5px; }
+  .chip.more { border-style: dashed; }
+
+  /* ---------- sections ---------- */
+  section { padding: 76px 0; }
+  .sec-head { text-align: center; max-width: 620px; margin: 0 auto 48px; }
+  .sec-head .eyebrow { font-size: 12.5px; font-weight: 700; letter-spacing: .22em; color: var(--accent); }
+  .sec-head h2 { font-size: clamp(24px, 3vw, 32px); font-weight: 800; margin: 10px 0 12px; }
+  .sec-head p { color: var(--muted); font-size: 15px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .feature {
+    border: 1px solid var(--border); border-radius: 16px; padding: 24px 22px; background: var(--bg-soft);
+    transition: transform .18s, border-color .18s, box-shadow .18s;
+  }
+  .feature:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); box-shadow: var(--shadow); }
+  .feature .ico {
+    width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 15px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-size: 19px;
+  }
+  .feature h3 { font-size: 16px; margin-bottom: 7px; }
+  .feature p { font-size: 13.5px; color: var(--muted); }
+
+  /* ---------- usage ---------- */
+  .usage { display: grid; grid-template-columns: 1fr 1.1fr; gap: 44px; align-items: start; }
+  .step { display: flex; gap: 16px; padding: 18px 0; border-bottom: 1px dashed var(--border); }
+  .step:last-child { border-bottom: 0; }
+  .step .n {
+    flex: 0 0 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(130deg, var(--accent), var(--accent-2)); color: #fff; font-weight: 700; font-size: 15px;
+  }
+  .step h3 { font-size: 15.5px; margin-bottom: 4px; }
+  .step p { font-size: 13.5px; color: var(--muted); }
+  .step code, p code, li code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: .88em;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+  }
+  pre {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; line-height: 2;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 14px; padding: 22px 26px;
+    overflow-x: auto; color: var(--text);
+  }
+  pre .cm { color: var(--muted); } pre .hl { color: var(--accent); font-weight: 600; }
+
+  /* ---------- install ---------- */
+  .install-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .install-card { border: 1px solid var(--border); border-radius: 16px; padding: 24px 22px; background: var(--bg-soft); position: relative; }
+  .install-card.rec { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  .install-card .tag {
+    position: absolute; top: -11px; left: 20px; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    background: linear-gradient(120deg, var(--accent), var(--accent-2)); color: #fff; border-radius: 999px; padding: 3px 12px;
+  }
+  .install-card h3 { font-size: 16px; margin-bottom: 10px; }
+  .install-card p { font-size: 13.5px; color: var(--muted); }
+  .install-card .mono {
+    display: block; margin-top: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; color: var(--text);
+  }
+
+  /* ---------- faq ---------- */
+  .faq { max-width: 720px; margin: 0 auto; }
+  details { border: 1px solid var(--border); border-radius: 13px; background: var(--bg-soft); padding: 0 20px; margin-bottom: 12px; }
+  details[open] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 16px 0; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+  summary::after { content: "+"; color: var(--accent); font-size: 19px; font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  details p { padding: 0 0 16px; color: var(--muted); font-size: 14px; }
+
+  footer { border-top: 1px solid var(--border); padding: 34px 0 44px; color: var(--muted); font-size: 13.5px; }
+  .foot-inner { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: center; }
+  footer a { color: var(--muted); } footer a:hover { color: var(--accent); }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 56px 0; gap: 40px; }
+    .grid, .install-grid { grid-template-columns: 1fr 1fr; }
+    .usage { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 620px) {
+    .grid, .install-grid { grid-template-columns: 1fr; }
+    section { padding: 56px 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap nav-inner">
+    <a class="logo" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      Any Viewer
+    </a>
+    <div class="nav-links">
+      <a href="#features">功能</a>
+      <a href="#usage">使用</a>
+      <a href="#install">安装</a>
+      <a href="#faq">常见问题</a>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="切换深浅色">🌓</button>
+    <a class="gh-btn" href="https://github.com/tingke/obsidian-any-viewer" target="_blank" rel="noopener">
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+      GitHub
+    </a>
+  </div>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <span class="badge"><span class="dot"></span>免费 · 开源 · 全程本地运行</span>
+    <h1>把 Word、Excel、PPT<br>直接<span class="grad">「贴」进 Obsidian</span></h1>
+    <p class="lead">Any Viewer 让笔记里的 <code>![[文件.docx]]</code> 不再是一个灰色的链接 —— 文档、表格、幻灯片、网页就地渲染，插入即预览，不用再切换应用。</p>
+    <div class="cta-row">
+      <a class="btn-primary" href="#install">立即安装</a>
+      <a class="btn-ghost" href="https://github.com/tingke/obsidian-any-viewer/releases" target="_blank" rel="noopener">下载 Release ↓</a>
+    </div>
+  </div>
+  <div class="mock" aria-hidden="true">
+    <div class="mock-head">
+      <span class="clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></span>
+      产品周报.docx
+      <span class="actions"><i></i><i></i></span>
+    </div>
+    <div class="mock-body">
+      <div class="mock-code">![[<b>产品周报.docx</b>]]　<span class="cm">← 就这一行</span></div>
+      <div class="page">
+        <div class="ph t"></div>
+        <div class="ph meta"></div>
+        <div class="ph l w90"></div>
+        <div class="ph l w76"></div>
+        <div class="ph l w84"></div>
+        <div class="mini-table">
+          <div class="r h"><div>指标</div><div>本周</div><div>上周</div><div>环比</div></div>
+          <div class="r"><div>日活跃用户</div><div>48,210</div><div>45,377</div><div class="up">▲ 6.2%</div></div>
+          <div class="r"><div>付费转化率</div><div>4.8%</div><div>4.5%</div><div class="up">▲ 0.3pt</div></div>
+        </div>
+      </div>
+      <div class="sheet-tabs"><i class="on">预算总览</i><i>渠道明细</i><i>+</i></div>
+    </div>
+  </div>
+</header>
+
+<div class="formats">
+  <div class="wrap chips">
+    <span class="chip"><b>DOCX</b>Word 文档</span>
+    <span class="chip"><b>XLSX</b>Excel 表格</span>
+    <span class="chip"><b>XLSM</b>宏工作簿</span>
+    <span class="chip"><b>XLS</b>旧版表格</span>
+    <span class="chip"><b>CSV</b>纯文本表格</span>
+    <span class="chip"><b>TSV</b>制表符分隔</span>
+    <span class="chip"><b>PPTX</b>幻灯片</span>
+    <span class="chip"><b>HTML</b>网页沙箱</span>
+    <span class="chip more">其他格式 → 文件卡片</span>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">FEATURES</div>
+      <h2>一个插件，管住所有「打不开」</h2>
+      <p>Obsidian 原生只认图片、音视频和 PDF。剩下的 Office 文件，交给 Any Viewer。</p>
+    </div>
+    <div class="grid">
+      <div class="feature"><div class="ico">📎</div><h3>插入即预览</h3><p>命令面板选文件、拖拽进笔记、复制后直接粘贴 —— 三种方式都能生成实时预览。</p></div>
+      <div class="feature"><div class="ico">🎨</div><h3>Excel 样式还原</h3><p>主题色与淡色填充、字体、边框、对齐、合并单元格、列宽行高、货币百分比格式，原样呈现。</p></div>
+      <div class="feature"><div class="ico">📐</div><h3>尺寸随心</h3><p><code>![[文件|300]]</code> 指定宽度，<code>|300x200</code> 宽高全定，<code>|x200</code> 只限高度，和图片嵌入同一套语法。</p></div>
+      <div class="feature"><div class="ico">🗂️</div><h3>多 Sheet 切换</h3><p>工作簿里的每个工作表都是一枚标签，点击切换；超出范围的大表自动截断并提示。</p></div>
+      <div class="feature"><div class="ico">🪟</div><h3>双击进标签页</h3><p>在嵌入里双击即可全屏查看；标题栏一键换新标签页打开，或调用系统默认应用。</p></div>
+      <div class="feature"><div class="ico">🔒</div><h3>本地渲染 · 中英双语</h3><p>所有解析都在本地完成，数据不出设备；界面跟随 Obsidian 语言，也可手动指定。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="usage" style="background: var(--bg-soft); border-block: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">USAGE</div>
+      <h2>三步上手</h2>
+      <p>会嵌图片，就会用 Any Viewer。</p>
+    </div>
+    <div class="usage">
+      <div>
+        <div class="step"><div class="n">1</div><div><h3>装上插件</h3><p>社区插件市场搜索安装，或用 BRAT / 手动方式（见下方）。</p></div></div>
+        <div class="step"><div class="n">2</div><div><h3>把文件放进笔记</h3><p>拖进来、粘进来，或者命令面板 <code>Any Viewer: 插入本地文件</code>。</p></div></div>
+        <div class="step"><div class="n">3</div><div><h3>直接看</h3><p>预览就地渲染；双击全屏，右上角随时跳系统应用。</p></div></div>
+      </div>
+      <pre><span class="cm">// 在笔记里直接写嵌入语法</span>
+![[<span class="hl">季度复盘.docx</span>]]          <span class="cm">// Word，默认宽度</span>
+![[<span class="hl">市场预算.xlsx</span>|640]]      <span class="cm">// Excel，限宽 640px</span>
+![[<span class="hl">发布计划.pptx</span>|520]]     <span class="cm">// PPT，限宽 520px</span>
+![[<span class="hl">原型页.html</span>]]           <span class="cm">// 网页，沙箱内嵌</span>
+![[<span class="hl">合同扫描.pdf</span>|x200]]     <span class="cm">// 原生格式不受影响</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">INSTALL</div>
+      <h2>三种安装方式</h2>
+      <p>推荐官方社区市场；拿不到市场就用 BRAT 或手动安装。</p>
+    </div>
+    <div class="install-grid">
+      <div class="install-card rec">
+        <span class="tag">推荐</span>
+        <h3>社区插件市场</h3>
+        <p>设置 → 第三方插件 → 关闭安全模式 → 社区插件市场搜索 <b>Any Viewer</b> → 安装并启用。</p>
+        <span class="mono">搜索关键字：Any Viewer</span>
+      </div>
+      <div class="install-card">
+        <h3>BRAT</h3>
+        <p>安装并启用 BRAT 插件后，执行命令 <b>Brat: Add Beta Plugin</b>，输入仓库地址。</p>
+        <span class="mono">tingke/obsidian-any-viewer</span>
+      </div>
+      <div class="install-card">
+        <h3>手动安装</h3>
+        <p>从 GitHub Releases 下载 <code>main.js</code>、<code>styles.css</code>、<code>manifest.json</code>，放入插件目录后重载。</p>
+        <span class="mono">&lt;vault&gt;/.obsidian/plugins/any-viewer/</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" style="background: var(--bg-soft); border-block: 1px solid var(--border);">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">FAQ</div>
+      <h2>常见问题</h2>
+    </div>
+    <div class="faq">
+      <details><summary>需要联网吗？数据会上传吗？</summary><p>不需要联网，也绝不上传。所有文件都在你的设备上本地解析渲染，适合存放敏感资料的仓库。</p></details>
+      <details><summary>支持老版 .doc / .ppt / .xls 吗？</summary><p>二进制老格式（.doc、.ppt）不支持，请先另存为 .docx / .pptx。.xls 和 .csv / .tsv 表格以简洁表格形式支持。</p></details>
+      <details><summary>Excel 的样式能还原到什么程度？</summary><p>填充色（含主题色与淡色）、字体样式、边框、对齐、合并单元格、列宽行高、数字格式（货币 / 百分比 / 日期）都会还原；图表与条件格式暂不支持。</p></details>
+      <details><summary>文件很大会有问题吗？</summary><p>超大表格默认只渲染前 2000 行 × 80 列并给出提示，点开新标签页可看全量；Word / PPT 大文件建议在标签页中查看。</p></details>
+      <details><summary>和其他 Office 预览插件有什么区别？</summary><p>Any Viewer 用一个插件覆盖 Word / Excel / PPT / HTML / CSV 全格式，并额外提供插入命令、粘贴与拖拽拦截、尺寸语法和文件卡片兜底，不必为每种格式各装一个插件。</p></details>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-inner">
+    <span>© 2026 tingke · MIT License</span>
+    <span>
+      <a href="https://github.com/tingke/obsidian-any-viewer" target="_blank" rel="noopener">GitHub</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/tingke/obsidian-any-viewer/releases" target="_blank" rel="noopener">Releases</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/tingke/obsidian-any-viewer/issues" target="_blank" rel="noopener">反馈问题</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  var btn = document.getElementById("themeBtn");
+  btn.addEventListener("click", function () {
+    var cur = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+    document.documentElement.dataset.theme = cur;
+    localStorage.setItem("av-theme", cur);
+  });
+</script>
+</body>
+</html>

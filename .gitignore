@@ -6,3 +6,4 @@ package-lock.json.bak
 # main.js is intentionally tracked: Obsidian's plugin review requires the
 # built artifact to be inspectable in the repository.
 smoke.cjs
+promo
