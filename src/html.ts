@@ -15,7 +15,7 @@ import { requestUrl } from "obsidian";
 export async function renderHtmlFrame(
   container: HTMLElement,
   data: ArrayBuffer,
-  opts: { allowScripts: boolean; height?: number; width?: number; maxHeight?: number; resourceUrl?: string }
+  opts: { allowScripts: boolean; height?: number; width?: number; maxHeight?: number; resourceUrl?: string; scrollToId?: string }
 ): Promise<void> {
   const text = new TextDecoder().decode(data);
   const parsed = new DOMParser().parseFromString(text, "text/html");
@@ -92,6 +92,15 @@ export async function renderHtmlFrame(
       frame.style.height = `${Math.max(Math.ceil(capped), 120)}px`;
     };
     apply();
+    // Display-syntax fragment `#element-id` (srcdoc is same-origin, so the
+    // frame's document is directly reachable). Silent when not found.
+    if (opts.scrollToId) {
+      try {
+        frame.contentDocument?.getElementById(opts.scrollToId)?.scrollIntoView({ block: "start" });
+      } catch (err) {
+        console.warn("[Any Viewer] fragment scroll failed", err);
+      }
+    }
     try {
       const docEl = frame.contentDocument?.documentElement;
       const body = frame.contentDocument?.body;

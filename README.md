@@ -52,6 +52,29 @@ Write `![[filename.ext]]` in a note to preview it inline:
 | `![[doc.docx\|x400]]` | Height only: 400px tall |
 | `![[doc.docx\|300x400]]` | 300px wide + 400px tall |
 
+### Display syntax (fragments)
+
+Pick which part of the file to show — combines freely with the sizing syntax
+(fragment before the `\|`, size after):
+
+| Syntax | Effect |
+|---|---|
+| `![[deck.pptx#page=3]]` | Only slide 3 (single page ≡ `3~3`) |
+| `![[deck.pptx#page=3~10]]` | Slides 3–10, stacked (`3~` = to the last slide) |
+| `![[doc.docx#page=2]]` | Only page 2 (same range forms as pptx) |
+| `![[book.xlsx#Sheet2]]` | Start on the named worksheet (tab bar stays) |
+| `![[book.xlsx#A1:D10]]` | Only that cell range |
+| `![[book.xlsx#Sheet2!A1:D10]]` | Named worksheet + range |
+| `![[book.xlsx#5:20]]` | Only rows 5–20 |
+| `![[page.html#header]]` | Scroll to the element with that id |
+
+Range rules: `-` works like `~`; reversed ranges normalize automatically
+(`8~3` → `3~8`); the end clamps to the last page; an out-of-bounds start falls
+back to the whole file. The embed header shows a badge ("Pages 3–10").
+**Fragments scope the inline embed only** (a worksheet/range fragment hides
+the sheet tab bar) — **opening the file in a tab shows the whole document and
+auto-scrolls to the fragment position** (like Obsidian's native PDF embeds).
+
 Embeds have a header bar: **click the filename** or **double-click the content** to open the file in a tab; header buttons open a tab or the system app.
 
 ### Tab view
@@ -74,6 +97,12 @@ Clicking `.docx/.xlsx/.xls/.csv/.tsv/.pptx/.html/.htm` files in the explorer ope
 ### BRAT
 
 BRAT → Add Plugin → paste this repository's Git URL.
+
+## Privacy, cost & network access
+
+- **Free, no paywall**: Any Viewer is MIT-licensed freeware — no paid features, no ads, no license keys, no upsells. Nothing here requires payment, now or later.
+- **No network access**: files are parsed and rendered entirely on your device. The plugin itself makes **zero network requests** — no telemetry, no analytics, no AI calls; your documents never leave your vault.
+- **One caveat**: HTML embeds render local `.html` files inside a sandboxed iframe. If such a file itself references external URLs (CDN fonts / scripts / images), those assets are loaded by the embedded page — governed by Obsidian's CSP and the "Allow scripts in HTML" setting (on by default, can be turned off).
 
 ## Building from source
 

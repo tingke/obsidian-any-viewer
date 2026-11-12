@@ -1,4 +1,326 @@
-/* ===== Any Viewer — embeds & views ===== */
+/* ===== Any Viewer — embeds & views =====
+ *
+ * Part 1 below is the design-token layer (mirrors
+ * promo/design-tokens/any-viewer.tokens.css v1.0 — that file is the spec).
+ * Part 2 must consume --av-* tokens only; no hardcoded theme colors, durations,
+ * radii or spacing outside the token layer. Never redefine host variables.
+ */
+
+/* ============================================================
+ * Part 1 — Design tokens
+ * Principle: host Obsidian theme first, semantic translation layer,
+ * neutral fallbacks only when a host variable is missing.
+ * Read-only towards host variables: no :root/body rewrites, no !important.
+ * Component rules consume --av-*; document originals stay owned by
+ * docx/pptx/xlsx/html renderers.
+ * ============================================================ */
+
+:is(.any-viewer-embed, .any-viewer-view) {
+  color-scheme: light;
+
+  /* ---------- Light fallbacks: used only when host variables are missing ---------- */
+  --av-fallback-canvas: #ffffff;
+  --av-fallback-surface: #ffffff;
+  --av-fallback-subtle: #f5f6f8;
+  --av-fallback-hover: rgb(20 24 33 / 0.06);
+  --av-fallback-text: #20242d;
+  --av-fallback-muted: #5c6573;
+  --av-fallback-faint: #737c8b;
+  --av-fallback-border: #dfe3e9;
+  --av-fallback-border-strong: #c3cad4;
+  --av-fallback-accent: #635bda;
+  --av-fallback-on-accent: #ffffff;
+  --av-fallback-danger: #b42335;
+  --av-fallback-success: #067647;
+  --av-fallback-warning: #92510a;
+  --av-fallback-info: #175cd3;
+  --av-fallback-shadow-rgb: 20 24 33;
+
+  /* ---------- Semantic / surfaces ---------- */
+  --av-bg-canvas: var(--background-primary, var(--av-fallback-canvas));
+  --av-bg-surface: var(--background-primary, var(--av-fallback-surface));
+  --av-bg-subtle: var(--background-secondary, var(--av-fallback-subtle));
+  --av-bg-raised: var(--background-primary, var(--av-fallback-surface));
+  --av-bg-hover: var(--background-modifier-hover, var(--av-fallback-hover));
+  --av-bg-active: var(--background-modifier-active-hover, var(--background-modifier-hover, var(--av-fallback-hover)));
+  --av-bg-selected: var(--av-bg-hover);
+  --av-accent-soft: var(--av-bg-hover);
+
+  /* ---------- Semantic / text ---------- */
+  --av-text-primary: var(--text-normal, var(--av-fallback-text));
+  --av-text-secondary: var(--text-muted, var(--av-fallback-muted));
+  --av-text-tertiary: var(--text-faint, var(--av-fallback-faint));
+  --av-text-disabled: var(--text-faint, var(--av-fallback-faint));
+  --av-text-accent: var(--text-accent, var(--interactive-accent, var(--av-fallback-accent)));
+  --av-text-on-accent: var(--text-on-accent, var(--av-fallback-on-accent));
+
+  /* ---------- Semantic / border & accent ---------- */
+  --av-border-subtle: var(--background-modifier-border, var(--av-fallback-border));
+  --av-border-strong: var(--background-modifier-border-hover, var(--background-modifier-border, var(--av-fallback-border-strong)));
+  --av-border-focus: var(--background-modifier-border-focus, var(--interactive-accent, var(--av-fallback-accent)));
+  --av-accent: var(--interactive-accent, var(--av-fallback-accent));
+  --av-accent-hover: var(--interactive-accent-hover, var(--interactive-accent, var(--av-fallback-accent)));
+
+  /* ---------- Semantic / status ---------- */
+  --av-success: var(--color-green, var(--av-fallback-success));
+  --av-warning: var(--color-orange, var(--av-fallback-warning));
+  --av-danger: var(--text-error, var(--color-red, var(--av-fallback-danger)));
+  --av-info: var(--color-blue, var(--av-fallback-info));
+  --av-success-soft: var(--av-bg-subtle);
+  --av-warning-soft: var(--av-bg-subtle);
+  --av-danger-soft: var(--av-bg-subtle);
+  --av-info-soft: var(--av-bg-subtle);
+
+  /* ---------- File-type identity: plugin icons only, never document content ---------- */
+  --av-file-word: var(--color-blue, #3274c8);
+  --av-file-excel: var(--color-green, #16865c);
+  --av-file-powerpoint: var(--color-orange, #c9632b);
+  --av-file-html: var(--color-cyan, #16869b);
+  --av-file-generic: var(--av-accent);
+
+  /* ---------- Source-faithful content: intentionally not theme-inverted ---------- */
+  --av-document-paper: #ffffff;
+  --av-document-ink: #20242d;
+  --av-iframe-background: #ffffff;
+
+  /* ---------- Typography: inherit user interface font and font size ---------- */
+  --av-font-ui: var(--font-interface, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif);
+  --av-font-content: var(--font-text, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif);
+  --av-font-mono: var(--font-monospace, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  --av-font-size-xs: var(--font-ui-smaller, 12px);
+  --av-font-size-sm: var(--font-ui-small, 13px);
+  --av-font-size-md: var(--font-ui-medium, 14px);
+  --av-font-size-lg: 16px;
+  --av-font-size-xl: 18px;
+  --av-font-weight-regular: 400;
+  --av-font-weight-medium: 500;
+  --av-font-weight-semibold: 600;
+  --av-font-weight-bold: 700;
+  --av-line-height-tight: 1.3;
+  --av-line-height-ui: 1.4;
+  --av-line-height-body: 1.6;
+  --av-letter-spacing-tight: -0.01em;
+  --av-letter-spacing-ui: 0;
+
+  /* ---------- 4px spacing scale ---------- */
+  --av-space-0: 0;
+  --av-space-0-5: 2px;
+  --av-space-1: 4px;
+  --av-space-1-5: 6px;
+  --av-space-2: 8px;
+  --av-space-2-5: 10px;
+  --av-space-3: 12px;
+  --av-space-4: 16px;
+  --av-space-5: 20px;
+  --av-space-6: 24px;
+  --av-space-8: 32px;
+  --av-space-10: 40px;
+
+  /* ---------- Size & density ---------- */
+  --av-control-height-sm: 28px;
+  --av-control-height-md: 32px;
+  --av-control-height-touch: 44px;
+  --av-header-height: 36px;
+  --av-icon-size-sm: 14px;
+  --av-icon-size-md: 16px;
+  --av-icon-size-lg: 20px;
+  --av-scrollbar-size: 8px;
+  --av-table-cell-padding-block: var(--av-space-1);
+  --av-table-cell-padding-inline: var(--av-space-2);
+
+  /* ---------- Shape ---------- */
+  --av-radius-xs: 3px;
+  --av-radius-sm: var(--radius-s, 4px);
+  --av-radius-md: var(--radius-m, 8px);
+  --av-radius-lg: var(--radius-l, 12px);
+  --av-radius-pill: 999px;
+  --av-border-width: 1px;
+  --av-focus-ring-width: 2px;
+  --av-focus-ring-offset: 2px;
+
+  /* ---------- Elevation: no large glassmorphism surfaces ---------- */
+  --av-shadow-xs: 0 1px 2px rgb(var(--av-fallback-shadow-rgb) / 0.05);
+  --av-shadow-sm: 0 2px 8px rgb(var(--av-fallback-shadow-rgb) / 0.07);
+  --av-shadow-md: 0 8px 24px rgb(var(--av-fallback-shadow-rgb) / 0.10);
+  --av-shadow-focus: 0 0 0 var(--av-focus-ring-width) var(--av-border-focus);
+
+  /* ---------- Motion ---------- */
+  --av-duration-instant: 100ms;
+  --av-duration-fast: 160ms;
+  --av-duration-normal: 240ms;
+  --av-duration-spin: 720ms;
+  --av-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --av-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* ---------- Layering ---------- */
+  --av-z-sticky: 10;
+  --av-z-popover: 100;
+  --av-z-tooltip: 110;
+
+  /* ---------- Component / embed ---------- */
+  --av-embed-margin-block: 0.6em;
+  --av-embed-background: var(--av-bg-surface);
+  --av-embed-border: var(--av-border-width) solid var(--av-border-subtle);
+  --av-embed-radius: var(--av-radius-md);
+  --av-embed-shadow: var(--av-shadow-xs);
+
+  /* ---------- Component / header & toolbar ---------- */
+  --av-header-background: var(--av-bg-subtle);
+  --av-header-foreground: var(--av-text-secondary);
+  --av-header-padding-block: var(--av-space-1);
+  --av-header-padding-inline: var(--av-space-2-5);
+  --av-header-gap: var(--av-space-2);
+  --av-toolbar-button-size: var(--av-control-height-sm);
+  --av-toolbar-button-radius: var(--av-radius-sm);
+  --av-toolbar-button-foreground: var(--av-text-secondary);
+  --av-toolbar-button-hover-bg: var(--av-bg-hover);
+  --av-toolbar-button-hover-fg: var(--av-text-primary);
+
+  /* ---------- Component / stage ---------- */
+  --av-stage-background: var(--av-bg-surface);
+  --av-stage-padding: var(--av-space-3);
+
+  /* ---------- Component / tabs ---------- */
+  --av-tab-height: var(--av-control-height-sm);
+  --av-tab-padding-inline: var(--av-space-2-5);
+  --av-tab-gap: var(--av-space-1);
+  --av-tab-background: var(--av-bg-subtle);
+  --av-tab-foreground: var(--av-text-secondary);
+  --av-tab-border: var(--av-border-subtle);
+  --av-tab-active-background: var(--av-bg-selected);
+  --av-tab-active-foreground: var(--av-text-primary);
+  --av-tab-active-border: var(--av-accent);
+
+  /* ---------- Component / spreadsheet ---------- */
+  --av-table-background: var(--av-bg-surface);
+  --av-table-foreground: var(--av-text-primary);
+  --av-table-grid: var(--av-border-subtle);
+  --av-table-stripe: var(--av-bg-subtle);
+  --av-table-row-hover: var(--av-accent-soft);
+  --av-table-link: var(--av-text-accent);
+
+  /* ---------- Component / card ---------- */
+  --av-card-min-height: 56px;
+  --av-card-padding: var(--av-space-3);
+  --av-card-gap: var(--av-space-3);
+  --av-card-background: var(--av-bg-surface);
+  --av-card-border: var(--av-border-subtle);
+  --av-card-hover-background: var(--av-bg-subtle);
+  --av-card-hover-border: var(--av-accent);
+  --av-card-hover-shadow: var(--av-shadow-sm);
+
+  /* ---------- Component / feedback & scrollbar ---------- */
+  --av-error-foreground: var(--av-danger);
+  --av-error-background: var(--av-danger-soft);
+  --av-loading-foreground: var(--av-text-secondary);
+  --av-scrollbar-track: transparent;
+  --av-scrollbar-thumb: var(--av-border-strong);
+}
+
+/* Obsidian's official theme classes re-resolve every variable live;
+ * never cache computed colors in TypeScript. */
+.theme-dark :is(.any-viewer-embed, .any-viewer-view) {
+  color-scheme: dark;
+  --av-fallback-canvas: #17191d;
+  --av-fallback-surface: #1c1f24;
+  --av-fallback-subtle: #23262d;
+  --av-fallback-hover: rgb(255 255 255 / 0.07);
+  --av-fallback-text: #e5e7eb;
+  --av-fallback-muted: #a7afbb;
+  --av-fallback-faint: #7f8895;
+  --av-fallback-border: #343943;
+  --av-fallback-border-strong: #4a515d;
+  --av-fallback-accent: #8b84e8;
+  --av-fallback-on-accent: #17191d;
+  --av-fallback-danger: #ff8a95;
+  --av-fallback-success: #5ed49a;
+  --av-fallback-warning: #f5bc67;
+  --av-fallback-info: #8ab6ff;
+  --av-fallback-shadow-rgb: 0 0 0;
+  --av-shadow-xs: 0 1px 2px rgb(var(--av-fallback-shadow-rgb) / 0.25);
+  --av-shadow-sm: 0 2px 8px rgb(var(--av-fallback-shadow-rgb) / 0.30);
+  --av-shadow-md: 0 8px 24px rgb(var(--av-fallback-shadow-rgb) / 0.36);
+}
+
+/* Old Electron builds without color-mix() keep the host hover/subtle fallbacks above. */
+@supports (background-color: color-mix(in srgb, #000000 10%, #ffffff)) {
+  :is(.any-viewer-embed, .any-viewer-view) {
+    --av-bg-selected: color-mix(in srgb, var(--av-accent) 12%, var(--av-bg-surface));
+    --av-accent-soft: color-mix(in srgb, var(--av-accent) 8%, var(--av-bg-surface));
+    --av-success-soft: color-mix(in srgb, var(--av-success) 10%, var(--av-bg-surface));
+    --av-warning-soft: color-mix(in srgb, var(--av-warning) 12%, var(--av-bg-surface));
+    --av-danger-soft: color-mix(in srgb, var(--av-danger) 8%, var(--av-bg-surface));
+    --av-info-soft: color-mix(in srgb, var(--av-info) 9%, var(--av-bg-surface));
+    --av-header-background: color-mix(in srgb, var(--av-bg-subtle) 72%, var(--av-bg-surface));
+    --av-table-stripe: color-mix(in srgb, var(--av-bg-subtle) 38%, transparent);
+  }
+}
+
+/* Touch screens grow plugin controls only; document content keeps its own size. */
+.is-mobile :is(.any-viewer-embed, .any-viewer-view) {
+  --av-control-height-sm: 36px;
+  --av-control-height-md: 40px;
+  --av-header-height: 44px;
+  --av-stage-padding: var(--av-space-2);
+}
+
+@media (pointer: coarse) {
+  :is(.any-viewer-embed, .any-viewer-view) {
+    --av-control-height-sm: 44px;
+    --av-control-height-md: 44px;
+    --av-header-height: 48px;
+  }
+}
+
+/* Windows high-contrast mode uses system colors, avoiding theme/forced conflicts. */
+@media (forced-colors: active) {
+  :is(.any-viewer-embed, .any-viewer-view) {
+    --av-bg-canvas: Canvas;
+    --av-bg-surface: Canvas;
+    --av-bg-subtle: Canvas;
+    --av-bg-raised: Canvas;
+    --av-bg-hover: Highlight;
+    --av-bg-active: Highlight;
+    --av-bg-selected: Highlight;
+    --av-accent-soft: Canvas;
+    --av-text-primary: CanvasText;
+    --av-text-secondary: CanvasText;
+    --av-text-tertiary: GrayText;
+    --av-text-disabled: GrayText;
+    --av-text-accent: LinkText;
+    --av-text-on-accent: HighlightText;
+    --av-border-subtle: CanvasText;
+    --av-border-strong: CanvasText;
+    --av-border-focus: Highlight;
+    --av-accent: Highlight;
+    --av-accent-hover: Highlight;
+    --av-success: CanvasText;
+    --av-warning: CanvasText;
+    --av-danger: CanvasText;
+    --av-info: LinkText;
+    --av-header-background: Canvas;
+    --av-tab-background: Canvas;
+    --av-tab-active-background: Highlight;
+    --av-tab-active-foreground: HighlightText;
+    --av-table-row-hover: Highlight;
+    --av-shadow-xs: none;
+    --av-shadow-sm: none;
+    --av-shadow-md: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.any-viewer-embed, .any-viewer-view) {
+    --av-duration-instant: 0ms;
+    --av-duration-fast: 0ms;
+    --av-duration-normal: 0ms;
+    --av-duration-spin: 0ms;
+  }
+}
+
+/* ============================================================
+ * Part 2 — Components (consume --av-* tokens only)
+ * ============================================================ */
 
 /* neutralize Obsidian's default internal-embed styling on our embeds */
 .markdown-preview-view .internal-embed.any-viewer-embed,
@@ -12,19 +334,21 @@
 .any-viewer-embed {
   display: block;
   width: 100%;
-  margin: 0.6em 0;
-  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 78%, var(--interactive-accent));
-  border-radius: calc(var(--radius-m) + 2px);
+  margin: var(--av-embed-margin-block) 0;
+  border: var(--av-embed-border);
+  border-radius: var(--av-embed-radius);
   overflow: hidden;
-  background: var(--background-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+  background: var(--av-embed-background);
+  box-shadow: var(--av-embed-shadow);
+  transition:
+    border-color var(--av-duration-fast) var(--av-ease-standard),
+    box-shadow var(--av-duration-fast) var(--av-ease-standard);
 }
 
 .any-viewer-embed:hover,
 .any-viewer-embed:focus-within {
-  border-color: color-mix(in srgb, var(--interactive-accent) 52%, var(--background-modifier-border));
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.08);
+  border-color: color-mix(in srgb, var(--av-accent) 52%, var(--av-border-subtle));
+  box-shadow: var(--av-shadow-sm);
 }
 
 .any-viewer-frame {
@@ -37,25 +361,26 @@
 .any-viewer-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 5px 10px;
-  background: color-mix(in srgb, var(--background-secondary) 82%, var(--background-primary));
-  border-bottom: 1px solid var(--background-modifier-border);
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
+  gap: var(--av-header-gap);
+  min-height: var(--av-header-height);
+  padding: var(--av-header-padding-block) var(--av-header-padding-inline);
+  background: var(--av-header-background);
+  border-bottom: var(--av-border-width) solid var(--av-border-subtle);
+  font-family: var(--av-font-ui);
+  font-size: var(--av-font-size-xs);
+  color: var(--av-header-foreground);
 }
 
 .any-viewer-header-icon {
   display: flex;
   flex: 0 0 auto;
-  color: var(--interactive-accent);
+  color: var(--av-accent);
   opacity: 0.9;
 }
 
 .any-viewer-header-icon svg {
-  width: 14px;
-  height: 14px;
+  width: var(--av-icon-size-sm);
+  height: var(--av-icon-size-sm);
 }
 
 .any-viewer-embed.has-width,
@@ -68,7 +393,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.35;
+  line-height: var(--av-line-height-ui);
 }
 
 .any-viewer-header-title.is-clickable {
@@ -76,8 +401,29 @@
 }
 
 .any-viewer-header-title.is-clickable:hover {
-  color: var(--text-accent);
+  color: var(--av-text-accent);
   text-decoration: underline;
+}
+
+/* Display-syntax fragment badge: "pages 3–10" / "Sheet2 · A1:D10" */
+.any-viewer-header-badge {
+  display: inline-block;
+  margin-left: var(--av-space-1-5);
+  padding: 0 var(--av-space-2);
+  border-radius: var(--av-radius-pill);
+  font-size: var(--av-font-size-xs);
+  line-height: var(--av-line-height-ui);
+  vertical-align: 1px;
+  color: var(--av-text-secondary);
+  background: var(--av-bg-hover);
+  border: var(--av-border-width) solid var(--av-border-subtle);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Pages/slides hidden by a `#page=` fragment (docx sections, pptx slides) */
+.any-viewer-hidden {
+  display: none !important;
 }
 
 .any-viewer-header-title.is-clickable:focus-visible,
@@ -85,38 +431,40 @@
 .any-viewer-tab:focus-visible,
 .any-viewer-card:focus-visible,
 .any-viewer-card-btn:focus-visible {
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: 2px;
+  outline: var(--av-focus-ring-width) solid var(--av-border-focus);
+  outline-offset: var(--av-focus-ring-offset);
 }
 
 .any-viewer-header button {
   box-shadow: none;
   background: transparent;
   height: auto;
-  min-width: 26px;
-  min-height: 26px;
-  padding: 4px;
-  color: var(--text-muted);
-  border-radius: var(--radius-s);
-  transition: color 120ms ease, background 120ms ease;
+  min-width: var(--av-toolbar-button-size);
+  min-height: var(--av-toolbar-button-size);
+  padding: var(--av-space-1);
+  color: var(--av-toolbar-button-foreground);
+  border-radius: var(--av-toolbar-button-radius);
+  transition:
+    color var(--av-duration-instant) var(--av-ease-standard),
+    background var(--av-duration-instant) var(--av-ease-standard);
 }
 
 .any-viewer-header button:hover {
-  color: var(--text-normal);
-  background: var(--background-modifier-hover);
+  color: var(--av-toolbar-button-hover-fg);
+  background: var(--av-toolbar-button-hover-bg);
 }
 
 .any-viewer-header button svg {
-  width: 14px;
-  height: 14px;
+  width: var(--av-icon-size-sm);
+  height: var(--av-icon-size-sm);
 }
 
 /* content stage */
 .any-viewer-stage {
   position: relative;
-  padding: 12px;
+  padding: var(--av-stage-padding);
   min-height: 0;
-  background: var(--background-primary);
+  background: var(--av-stage-background);
 }
 
 .any-viewer-stage.is-scrollable {
@@ -139,41 +487,41 @@
 
 /* slim down pptx-preview's built-in scrollbars */
 .any-viewer-pptx ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: var(--av-scrollbar-size);
+  height: var(--av-scrollbar-size);
 }
 
 .any-viewer-pptx ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--av-scrollbar-track);
 }
 
 .any-viewer-pptx ::-webkit-scrollbar-thumb {
-  background: var(--background-modifier-border);
-  border-radius: 4px;
+  background: var(--av-scrollbar-thumb);
+  border-radius: var(--av-radius-pill);
 }
 
 .any-viewer-pptx ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-faint);
+  background: var(--av-text-tertiary);
 }
 
 .any-viewer-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: var(--av-space-2);
   min-height: 86px;
-  padding: 24px 0;
-  color: var(--text-faint);
+  padding: var(--av-space-6) 0;
+  color: var(--av-loading-foreground);
 }
 
 .any-viewer-loading::before {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--background-modifier-border);
-  border-top-color: var(--interactive-accent);
+  width: var(--av-icon-size-sm);
+  height: var(--av-icon-size-sm);
+  border: var(--av-focus-ring-width) solid var(--av-border-subtle);
+  border-top-color: var(--av-accent);
   border-radius: 50%;
   content: "";
-  animation: any-viewer-spin 720ms linear infinite;
+  animation: any-viewer-spin var(--av-duration-spin) linear infinite;
 }
 
 @keyframes any-viewer-spin {
@@ -181,50 +529,157 @@
 }
 
 .any-viewer-empty {
-  padding: 16px;
+  padding: var(--av-space-4);
   text-align: center;
-  color: var(--text-faint);
+  color: var(--av-text-tertiary);
 }
 
 .any-viewer-error {
-  padding: 10px 12px;
-  color: var(--text-error);
-  font-size: var(--font-ui-smaller);
-  background: color-mix(in srgb, var(--text-error) 6%, var(--background-primary));
-  border-radius: var(--radius-s);
+  padding: var(--av-space-2-5) var(--av-space-3);
+  color: var(--av-error-foreground);
+  font-size: var(--av-font-size-xs);
+  background: var(--av-error-background);
+  border-radius: var(--av-radius-sm);
 }
 
-/* docx (docx-preview) tweaks */
+/* docx (docx-preview) tweaks — pages centered horizontally */
 .any-viewer-docx .docx-wrapper {
   background: transparent;
   padding: 0;
-  display: block;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+}
+
+
+/* Animated "cannot preview here" artwork (document + shaking padlock) */
+.any-viewer-card-art {
+  width: 44px;
+  height: auto;
+  flex-shrink: 0;
+}
+
+.any-viewer-card-art .art-ext {
+  font-weight: 700;
+  fill: var(--text-muted);
+  font-family: var(--font-interface);
+  letter-spacing: 0.02em;
+}
+
+.any-viewer-card-art .art-line {
+  fill: var(--text-faint);
+}
+
+.any-viewer-card-art .art-page {
+  animation: any-viewer-art-float 3.8s ease-in-out infinite;
+}
+
+.any-viewer-card-art .art-lock {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: any-viewer-art-lock-shake 4.6s ease-in-out infinite;
+}
+
+@keyframes any-viewer-art-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes any-viewer-art-lock-shake {
+  0%,
+  62%,
+  100% {
+    transform: rotate(0deg);
+  }
+  68% {
+    transform: rotate(-9deg);
+  }
+  74% {
+    transform: rotate(8deg);
+  }
+  80% {
+    transform: rotate(-5deg);
+  }
+  86% {
+    transform: rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .any-viewer-card-art .art-page,
+  .any-viewer-card-art .art-lock {
+    animation: none;
+  }
+}
+
+/* Unavailable block: centered animated artwork + one copy line — the frame
+   header already shows the filename and actions, so no card box is layered
+   on top. */
+.any-viewer-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--av-space-1);
+  padding: var(--av-space-1);
+  border-radius: var(--av-radius-sm);
+  cursor: pointer;
+  text-align: center;
+}
+
+.any-viewer-unavailable:hover {
+  background: var(--background-modifier-hover);
+}
+
+.any-viewer-unavailable-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.any-viewer-unavailable-name {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.any-viewer-unavailable-title {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+.any-viewer-card .any-viewer-unavailable {
+  padding: 0;
 }
 
 .any-viewer-docx .docx-wrapper > section.docx {
   box-shadow: none;
-  border: 1px solid var(--background-modifier-border);
+  border: var(--av-border-width) solid var(--av-border-subtle);
   margin-bottom: 0.75em;
-  border-radius: var(--radius-s);
+  border-radius: var(--av-radius-sm);
 }
 
 /* spreadsheets */
 .any-viewer-sheet-tabs {
   display: flex;
   flex-wrap: nowrap;
-  gap: 5px;
-  padding: 0 0 10px;
+  gap: var(--av-tab-gap);
+  padding: 0 0 var(--av-space-2-5);
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .any-viewer-tab {
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-  color: var(--text-muted);
-  border-radius: 999px;
-  padding: 5px 11px;
-  font-size: var(--font-ui-smaller);
+  border: var(--av-border-width) solid var(--av-tab-border);
+  background: var(--av-tab-background);
+  color: var(--av-tab-foreground);
+  border-radius: var(--av-radius-pill);
+  padding: var(--av-space-1) var(--av-tab-padding-inline);
+  font-size: var(--av-font-size-xs);
   cursor: pointer;
   box-shadow: none;
   margin: 0;
@@ -232,61 +687,70 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition:
+    background var(--av-duration-instant) var(--av-ease-standard),
+    border-color var(--av-duration-instant) var(--av-ease-standard),
+    color var(--av-duration-instant) var(--av-ease-standard);
 }
 
 .any-viewer-tab:hover {
-  border-color: var(--interactive-accent);
-  color: var(--text-normal);
+  border-color: var(--av-tab-active-border);
+  color: var(--av-text-primary);
 }
 
+/* selected state = soft accent fill + primary text + accent border */
 .any-viewer-tab.is-active {
-  background: var(--interactive-accent);
-  border-color: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background: var(--av-tab-active-background);
+  border-color: var(--av-tab-active-border);
+  color: var(--av-tab-active-foreground);
 }
 
 .any-viewer-sheet-content {
   overflow: visible;
 }
 
-.any-viewer-sheet-table {
+/* Scoped under .any-viewer-sheet-content to out-specify Obsidian's own table
+   styles (.markdown-rendered table etc.), which would otherwise re-add table
+   margins inside reading-mode embeds. */
+.any-viewer-sheet-content .any-viewer-sheet-table {
   border-collapse: collapse;
-  font-size: var(--font-ui-smaller);
-  font-family: var(--font-text);
+  font-size: var(--av-font-size-xs);
+  font-family: var(--av-font-content);
+  color: var(--av-table-foreground);
   margin: 0;
   table-layout: auto;
-  background: var(--background-primary);
+  background: var(--av-table-background);
 }
 
-.any-viewer-sheet-table td,
-.any-viewer-sheet-table th {
-  border: 1px solid var(--background-modifier-border);
-  padding: 3px 8px;
+.any-viewer-sheet-content .any-viewer-sheet-table td,
+.any-viewer-sheet-content .any-viewer-sheet-table th {
+  border: var(--av-border-width) solid var(--av-table-grid);
+  padding: var(--av-table-cell-padding-block) var(--av-table-cell-padding-inline);
   min-width: 2.5em;
   max-width: 480px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   vertical-align: middle;
-  transition: background 100ms ease;
+  transition: background var(--av-duration-instant) var(--av-ease-standard);
 }
 
-.any-viewer-sheet-table tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--background-secondary) 34%, transparent);
+.any-viewer-sheet-content .any-viewer-sheet-table tr:nth-child(even) td {
+  background: var(--av-table-stripe);
 }
 
-.any-viewer-sheet-table tr:hover td {
-  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-primary));
+.any-viewer-sheet-content .any-viewer-sheet-table tr:hover td {
+  background: var(--av-table-row-hover);
 }
 
-.any-viewer-sheet-table td a {
-  color: var(--text-accent);
+.any-viewer-sheet-content .any-viewer-sheet-table td a {
+  color: var(--av-table-link);
 }
 
 .any-viewer-sheet-truncated {
-  padding: 6px 2px;
-  font-size: var(--font-ui-smaller);
-  color: var(--text-faint);
+  padding: var(--av-space-1-5) var(--av-space-0-5);
+  font-size: var(--av-font-size-xs);
+  color: var(--av-text-tertiary);
 }
 
 /* pptx */
@@ -295,44 +759,49 @@
   width: fit-content;
 }
 
-/* html iframe */
+/* html iframe — source-faithful white paper, never theme-inverted */
 .any-viewer-html-frame {
   display: block;
   width: 100%;
   min-height: 200px;
   border: 0;
-  background: #fff;
-  border-radius: var(--radius-s);
+  background: var(--av-iframe-background);
+  border-radius: var(--av-radius-sm);
 }
 
 /* fallback file card */
 .any-viewer-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 54px;
-  padding: 12px 14px;
-  border: 1px dashed var(--background-modifier-border);
-  border-radius: var(--radius-m);
+  gap: var(--av-card-gap);
+  min-height: var(--av-card-min-height);
+  padding: var(--av-card-padding);
+  border: var(--av-border-width) solid var(--av-card-border);
+  border-radius: var(--av-radius-md);
   cursor: pointer;
-  background: var(--background-primary);
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--av-card-background);
+  transition:
+    border-color var(--av-duration-fast) var(--av-ease-standard),
+    background var(--av-duration-fast) var(--av-ease-standard),
+    transform var(--av-duration-fast) var(--av-ease-standard),
+    box-shadow var(--av-duration-fast) var(--av-ease-standard);
 }
 
 .any-viewer-card:hover {
-  border-color: var(--interactive-accent);
-  background: var(--background-secondary);
+  border-color: var(--av-card-hover-border);
+  background: var(--av-card-hover-background);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--av-card-hover-shadow);
 }
 
 .any-viewer-card-icon {
   display: flex;
   align-items: center;
-  color: var(--interactive-accent);
-  padding: 7px;
-  border-radius: var(--radius-s);
-  background: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+  justify-content: center;
+  color: var(--av-accent);
+  padding: var(--av-space-2);
+  border-radius: var(--av-radius-sm);
+  background: var(--av-accent-soft);
 }
 
 .any-viewer-card-icon svg {
@@ -346,17 +815,17 @@
 }
 
 .any-viewer-card-name {
-  font-size: var(--font-ui-small);
-  color: var(--text-normal);
+  font-size: var(--av-font-size-sm);
+  color: var(--av-text-primary);
   word-break: break-all;
-  line-height: 1.3;
-  font-weight: 600;
+  line-height: var(--av-line-height-tight);
+  font-weight: var(--av-font-weight-semibold);
 }
 
 .any-viewer-card-meta {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-faint);
-  margin-top: 2px;
+  font-size: var(--av-font-size-xs);
+  color: var(--av-text-tertiary);
+  margin-top: var(--av-space-0-5);
 }
 
 .any-viewer-card-actions {
@@ -366,16 +835,16 @@
 
 .any-viewer-card-btn {
   box-shadow: none;
-  color: var(--text-muted);
+  color: var(--av-text-secondary);
 }
 
 .any-viewer-card-btn:hover {
-  color: var(--interactive-accent);
+  color: var(--av-accent);
 }
 
 .any-viewer-card-btn svg {
-  width: 16px;
-  height: 16px;
+  width: var(--av-icon-size-md);
+  height: var(--av-icon-size-md);
 }
 
 /* full-pane view */
@@ -398,11 +867,11 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: var(--radius-m);
-  margin: 10px;
+  border: var(--av-border-width) solid var(--av-border-subtle);
+  border-radius: var(--av-radius-md);
+  margin: var(--av-space-2-5);
   overflow: hidden;
-  background: var(--background-primary);
+  background: var(--av-bg-surface);
 }
 
 .any-viewer-view .any-viewer-html-frame {
@@ -415,17 +884,21 @@
 }
 
 @media (max-width: 600px) {
-  .any-viewer-stage { padding: 8px; }
-  .any-viewer-header { padding-inline: 8px; }
-  .any-viewer-header button { min-width: 30px; min-height: 30px; }
-  .any-viewer-sheet-table td,
-  .any-viewer-sheet-table th { padding-inline: 6px; }
+  .any-viewer-stage { padding: var(--av-space-2); }
+  .any-viewer-header { padding-inline: var(--av-space-2); }
+  .any-viewer-header button {
+    min-width: calc(var(--av-toolbar-button-size) + var(--av-space-0-5));
+    min-height: calc(var(--av-toolbar-button-size) + var(--av-space-0-5));
+  }
+  .any-viewer-sheet-content .any-viewer-sheet-table td,
+  .any-viewer-sheet-content .any-viewer-sheet-table th { padding-inline: var(--av-space-1-5); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .any-viewer-embed,
   .any-viewer-card,
   .any-viewer-header button,
+  .any-viewer-tab,
   .any-viewer-sheet-table td { transition: none; }
   .any-viewer-loading::before { animation: none; }
 }

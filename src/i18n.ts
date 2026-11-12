@@ -28,6 +28,18 @@ type Dict = {
   cardTooltip: (path: string) => string;
   cardClickHint: string;
   cardOpenLabel: string;
+  unavailableTitle: string;
+  // fragment (display syntax) badges in the embed header
+  fragmentPageBadge: (n: number) => string;
+  fragmentPageRangeBadge: (a: number, b: number) => string;
+  fragmentPageOpenBadge: (n: number) => string;
+  fragmentSheetBadge: (name: string) => string;
+  fragmentRangeBadge: (text: string) => string;
+  fragmentRowsBadge: (a: number, b: number) => string;
+  fragmentElementBadge: (id: string) => string;
+  // diagnostics (command palette entry + report modal)
+  cmdDiagnoseName: string;
+  diagnoseCopied: string;
   // settings
   settingsInsert: string;
   settingsAttachmentLocation: string;
@@ -86,6 +98,16 @@ const zh: Dict = {
   cardTooltip: (path) => `${path}\n单击：用系统应用打开 · Shift+单击：在文件管理器中显示`,
   cardClickHint: "用系统应用打开",
   cardOpenLabel: "用系统应用打开",
+  unavailableTitle: "无法在 Obsidian 内打开",
+  fragmentPageBadge: (n) => `第 ${n} 页`,
+  fragmentPageRangeBadge: (a, b) => `第 ${a}–${b} 页`,
+  fragmentPageOpenBadge: (n) => `第 ${n} 页起`,
+  fragmentSheetBadge: (name) => `工作表 ${name}`,
+  fragmentRangeBadge: (text) => `区域 ${text}`,
+  fragmentRowsBadge: (a, b) => `第 ${a}–${b} 行`,
+  fragmentElementBadge: (id) => `定位 #${id}`,
+  cmdDiagnoseName: "诊断当前笔记的嵌入",
+  diagnoseCopied: "诊断报告已复制到剪贴板；也可手动全选复制。",
   settingsInsert: "插入",
   settingsAttachmentLocation: "附件保存位置",
   settingsAttachmentLocationDesc: "通过命令、粘贴或拖拽插入的文件保存到哪里。",
@@ -140,9 +162,19 @@ const en: Dict = {
   emptyWorkbook: "(empty workbook)",
   emptySheet: "(empty sheet)",
   truncated: (rows, cols) => `Sheet too large — showing first ${rows} rows × ${cols} columns (open in a tab to see everything)`,
-  cardTooltip: (path) => `${path}\nClick: open with system app · Shift+Click: reveal in file manager`,
+  cardTooltip: (path) => `${path}\nClick: open with the system app · Shift+Click: reveal in file manager`,
   cardClickHint: "Open with system app",
   cardOpenLabel: "Open with system app",
+  unavailableTitle: "Cannot open inside Obsidian",
+  fragmentPageBadge: (n) => `Page ${n}`,
+  fragmentPageRangeBadge: (a, b) => `Pages ${a}–${b}`,
+  fragmentPageOpenBadge: (n) => `From page ${n}`,
+  fragmentSheetBadge: (name) => `Sheet ${name}`,
+  fragmentRangeBadge: (text) => `Range ${text}`,
+  fragmentRowsBadge: (a, b) => `Rows ${a}–${b}`,
+  fragmentElementBadge: (id) => `Anchor #${id}`,
+  cmdDiagnoseName: "Diagnose embeds in the current note",
+  diagnoseCopied: "Report copied to the clipboard; you can also select the text and copy it manually.",
   settingsInsert: "Insertion",
   settingsAttachmentLocation: "Attachment location",
   settingsAttachmentLocationDesc: "Where files inserted via command, paste or drag & drop are saved.",

@@ -1,5 +1,7 @@
 import { App, Notice, Platform, TFile, Vault, FileSystemAdapter, getIcon, normalizePath } from "obsidian";
 import type AnyViewerPlugin from "./main";
+import type { ParsedFragment } from "./fragment";
+import type { AnyViewerFileView } from "./view";
 import { t } from "./i18n";
 
 /** Extensions handled by each renderer. */
@@ -11,6 +13,12 @@ export const HTML_EXTS = ["html", "htm"];
 /** All extensions that get a dedicated Any Viewer tab view. */
 export const VIEWABLE_EXTS = [...DOCX_EXTS, ...SHEET_EXTS, ...PPTX_EXTS, ...HTML_EXTS];
 
+/**
+ * View type id for Any Viewer tab views. Defined here so view.ts can
+ * re-export it for the existing import sites.
+ */
+export const ANY_VIEW_TYPE = "any-viewer-file";
+
 /** Extensions Obsidian renders natively (images / audio / video / pdf / notes). */
 export const NATIVE_EXTS = new Set([
   "md", "canvas", "pdf",
@@ -21,6 +29,32 @@ export const NATIVE_EXTS = new Set([
 
 export function isNativeExt(ext: string): boolean {
   return NATIVE_EXTS.has(ext.toLowerCase());
+}
+
+/**
+ * Fallback link resolution for extensions Obsidian doesn't index (when
+ * "Detect all file extensions" is off, metadataCache misses e.g. .zip/.docx
+ * and getFirstLinkpathDest returns null). Matches by basename across the
+ * whole vault instead — the vault adapter sees every file on disk regardless
+ * of that setting. Prefers the source note's folder, then the shortest path.
+ * Returns null when no (or genuinely no) matching file exists, so broken
+ * links keep rendering Obsidian's own unresolved chip.
+ */
+export function resolveByBasename(app: App, linkpath: string, sourcePath: string): TFile | null {
+  const wanted = linkpath.split("/").pop()?.trim().toLowerCase() ?? "";
+  if (!wanted) return null;
+  const lowered = linkpath.toLowerCase();
+  const candidates = app.vault
+    .getFiles()
+    .filter((f) => f.name.toLowerCase() === wanted || f.path.toLowerCase() === lowered);
+  if (!candidates.length) return null;
+  const sourceDir = sourcePath.includes("/") ? sourcePath.slice(0, sourcePath.lastIndexOf("/")) : "";
+  const dirOf = (p: string) => (p.includes("/") ? p.slice(0, p.lastIndexOf("/")) : "");
+  return candidates.sort((a, b) => {
+    const sameA = dirOf(a.path) === sourceDir ? 0 : 1;
+    const sameB = dirOf(b.path) === sourceDir ? 0 : 1;
+    return sameA - sameB || a.path.length - b.path.length;
+  })[0];
 }
 
 const EXT_ICONS: Record<string, string> = {
@@ -106,6 +140,23 @@ export function openFileExternally(plugin: AnyViewerPlugin, file: TFile): void {
     }
   }
   new Notice(t(plugin.settings).noticeShellUnsupported);
+}
+
+/**
+ * Open a file in a new tab in LOCATE mode: the tab renders the FULL file and
+ * then scrolls/activates the fragment position (page N, sheet, range start,
+ * element anchor). Two-pass by necessity — openFile renders first, then
+ * applyFragment re-renders with the locate hint, because FileView offers no
+ * way to hand state to a freshly created leaf view.
+ */
+export async function openFileWithFragment(app: App, file: TFile, frag?: ParsedFragment): Promise<void> {
+  const leaf = app.workspace.getLeaf("tab");
+  await leaf.openFile(file);
+  if (!frag) return;
+  const view = leaf.view;
+  if (view && view.getViewType() === ANY_VIEW_TYPE) {
+    (view as AnyViewerFileView).applyFragment(frag);
+  }
 }
 
 /** Reveal a vault file in the system file manager. */
