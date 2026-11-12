@@ -9,3 +9,6 @@ smoke.cjs
 promo
 # temp config generated + self-deleted by scripts/lint-obsidian.mjs
 .eslint-obsidian.tmp.config.mjs
+
+# accidental local install target of the lint toolchain (see scripts/lint-obsidian.mjs hint)
+.lint-tools/
