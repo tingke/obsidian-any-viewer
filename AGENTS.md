@@ -41,3 +41,34 @@
 - 渲染保真度低于 WASM 方案是接受的取舍（轻量、纯前端、移动端可行），保真类需求先记录到路线图不硬刚。
 - 链接解析有 basename 兜底（`util.ts` 的 `resolveByBasename`）：metadataCache 解析不到时按文件名遍历 vault（同目录优先、最短路径次之）。这是功能不是补丁——让"检测所有文件扩展名"关闭时卡片与预览照常工作，**不要移除**；真正的坏链（vault 内无此文件）仍交给 Obsidian 的未解析芯片。
 - **两种片段语义并存，不要合并**：嵌入（`RenderIntoOptions.frag`）= 裁剪显示（xlsx 片段同时隐藏工作表标签栏）；标签页（`RenderIntoOptions.locate`）= 完整文件 + 渲染后自动定位到片段位置（`FileRenderer.locate` 钩子）。嵌入点"在标签页打开"即切换到 locate 语义（`openFileWithFragment`）。
+
+## 7. 上架（两段式：先送审，后发版）
+
+顺序是硬要求：先让仓库源码过官方审评，通过之后才打 tag、发 Release。审评没结果之前**只推 main，不打 tag、不发 Release**——Release 一旦发出，下载三件套的用户拿到的就是没过审的产物。
+
+每次上架前必跑官方 lint（与社区目录自动审核同源，脚本移植自 bz-reader 的 `scripts/lint-obsidian.mjs`）：
+
+```bash
+npm run lint:obsidian
+```
+
+- 必须 **0 error / 0 warning**；退出码非 0 就停（error 直接卡审，warning 是审评意见高频来源）。
+- 工具链装在仓库外 `~/Library/Caches/any-viewer-lint`（`ANY_VIEWER_LINT_HOME` 可覆盖），首次自动安装，不碰项目 `node_modules`，版本钉死不受 devDependencies 漂移影响。
+- eslint 配置由脚本临时生成到仓库根（`.eslint-obsidian.tmp.config.mjs`，已 gitignore），跑完自删——刻意区别于仓库自带的 `eslint.config.mjs`，清理不会碰它。需要豁免某条规则时在脚本 `writeTempConfig()` 里集中记录并写明理由。
+- 支持 `--fix` 自动修复。
+
+### 送审段（只到推送为止）
+
+1. `npm run lint:obsidian` → 0/0；
+2. 补齐本版翻译：新增/改动文案 zh/en 双包写实，不留硬编码双语文案；
+3. 三道门：`npm run build && npm run lint && npm test`（快速门禁可用 `npm run verify` = typecheck + 单测 + 官方 lint）；
+4. 版本号三处同步：`manifest.json` / `package.json` / `versions.json`；
+5. 合规自查：`manifest.json` 与 `package.json` 的 description 不出现 "Obsidian"；`README.md` / `README.zh.md` 披露付费与联网；
+6. 提交并推送 main，等官方审评（community.obsidian.md 网页提交）。
+   - **不通过**：照报错在 main 上继续改，重跑第 1–5 步再审；同一版本号可以反复送审。
+   - **通过**：才进发版段。
+
+### 发版段（审评通过之后）
+
+7. 在送审通过的那个提交上打 tag 并推送：`git tag <版本> && git push origin <版本>`——tag 与 `manifest.version` 逐字相同、**不带 `v`**，此后不再改代码（要改就回送审段重审）；
+8. CI（`.github/workflows/release.yml`）在 tag 上自动构建、校验 tag = manifest.version、创建 Release（main.js / manifest.json / styles.css + 构建出处证明）；`gh release view <版本>` 确认已转正。

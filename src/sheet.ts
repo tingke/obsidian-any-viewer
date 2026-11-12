@@ -388,7 +388,7 @@ function renderWorksheetExcelJS(content: HTMLElement, ws: Worksheet, palette: Th
     const tr = rows.get(r);
     if (!tr) continue;
     const row = ws.getRow(r);
-    for (let c = 1; c <= colCount; c++) {
+    for (let c = cStart; c <= colCount; c++) {
       if (masterOf.has(`${r},${c}`)) continue; // covered by a merge
       const cell: Cell | undefined = row?.getCell(c);
       const td = tr.createEl("td");

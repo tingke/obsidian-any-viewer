@@ -99,7 +99,7 @@ export function buildUnavailableContent(plugin: AnyViewerPlugin, file: TFile, op
     if (shiftKey) revealFileInSystem(plugin, file);
     else openFileExternally(plugin, file);
   };
-  block.addEventListener("click", (e) => open((e as MouseEvent).shiftKey));
+  block.addEventListener("click", (e) => open(e.shiftKey));
   block.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();

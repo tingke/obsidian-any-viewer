@@ -7,3 +7,5 @@ package-lock.json.bak
 # built artifact to be inspectable in the repository.
 smoke.cjs
 promo
+# temp config generated + self-deleted by scripts/lint-obsidian.mjs
+.eslint-obsidian.tmp.config.mjs

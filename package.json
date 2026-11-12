@@ -9,7 +9,9 @@
     "deploy": "npm run build && node scripts/deploy.cjs",
     "test": "node scripts/fragment.test.mjs",
     "typecheck": "tsc -noEmit -skipLibCheck",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "lint:obsidian": "node scripts/lint-obsidian.mjs",
+    "verify": "npm run typecheck && npm test && npm run lint:obsidian"
   },
   "keywords": [
     "obsidian",
