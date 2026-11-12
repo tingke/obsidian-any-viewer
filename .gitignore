@@ -3,11 +3,12 @@ node_modules/
 .DS_Store
 package-lock.json.bak
 .ssh_tmp/
-# main.js is intentionally tracked: Obsidian's plugin review requires the
-# built artifact to be inspectable in the repository.
 smoke.cjs
 promo
-# temp config generated + self-deleted by scripts/lint-obsidian.mjs
+
+# main.js is intentionally tracked (BRAT installs from a branch; artifact
+# stays inspectable at repo root). This is a choice, NOT a review requirement —
+# the official sample plugin gitignores it; either way passes plugin review.
 .eslint-obsidian.tmp.config.mjs
 
 # accidental local install target of the lint toolchain (see scripts/lint-obsidian.mjs hint)
