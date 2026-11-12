@@ -37,6 +37,8 @@ export interface RenderIntoOptions {
   showHeader?: boolean;
   /** Allow JavaScript inside embedded HTML files. */
   allowScripts?: boolean;
+  /** Bypass the shared render queue — user-initiated tab renders jump ahead. */
+  direct?: boolean;
   /** Display-syntax fragment for INLINE embeds — renderers clip to it. */
   frag?: ParsedFragment;
   /** Display-syntax fragment for TAB/locate mode — render the FULL file, then bring this position into view. */

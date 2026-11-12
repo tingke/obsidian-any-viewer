@@ -31,9 +31,9 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 
-const TOOLS =
-  process.env.ANY_VIEWER_LINT_HOME ||
-  path.join(os.homedir(), "Library", "Caches", "any-viewer-lint");
+const TOOLS = path.resolve(
+  process.env.ANY_VIEWER_LINT_HOME || path.join(os.homedir(), "Library", "Caches", "any-viewer-lint")
+);
 const PLUGIN_DIR = path.join(TOOLS, "node_modules", "eslint-plugin-obsidianmd");
 const ESLINT_BIN = path.join(TOOLS, "node_modules", "eslint", "bin", "eslint.js");
 const TEMP_CONFIG = path.join(process.cwd(), ".eslint-obsidian.tmp.config.mjs");

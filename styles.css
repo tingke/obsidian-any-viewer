@@ -430,7 +430,7 @@
 .any-viewer-header button:focus-visible,
 .any-viewer-tab:focus-visible,
 .any-viewer-card:focus-visible,
-.any-viewer-card-btn:focus-visible {
+.any-viewer-unavailable:focus-visible {
   outline: var(--av-focus-ring-width) solid var(--av-border-focus);
   outline-offset: var(--av-focus-ring-offset);
 }
@@ -792,59 +792,6 @@
   background: var(--av-card-hover-background);
   transform: translateY(-1px);
   box-shadow: var(--av-card-hover-shadow);
-}
-
-.any-viewer-card-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--av-accent);
-  padding: var(--av-space-2);
-  border-radius: var(--av-radius-sm);
-  background: var(--av-accent-soft);
-}
-
-.any-viewer-card-icon svg {
-  width: 26px;
-  height: 26px;
-}
-
-.any-viewer-card-body {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.any-viewer-card-name {
-  font-size: var(--av-font-size-sm);
-  color: var(--av-text-primary);
-  word-break: break-all;
-  line-height: var(--av-line-height-tight);
-  font-weight: var(--av-font-weight-semibold);
-}
-
-.any-viewer-card-meta {
-  font-size: var(--av-font-size-xs);
-  color: var(--av-text-tertiary);
-  margin-top: var(--av-space-0-5);
-}
-
-.any-viewer-card-actions {
-  display: flex;
-  align-items: center;
-}
-
-.any-viewer-card-btn {
-  box-shadow: none;
-  color: var(--av-text-secondary);
-}
-
-.any-viewer-card-btn:hover {
-  color: var(--av-accent);
-}
-
-.any-viewer-card-btn svg {
-  width: var(--av-icon-size-md);
-  height: var(--av-icon-size-md);
 }
 
 /* full-pane view */

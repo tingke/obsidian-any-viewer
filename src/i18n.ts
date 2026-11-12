@@ -37,9 +37,6 @@ type Dict = {
   fragmentRangeBadge: (text: string) => string;
   fragmentRowsBadge: (a: number, b: number) => string;
   fragmentElementBadge: (id: string) => string;
-  // diagnostics (command palette entry + report modal)
-  cmdDiagnoseName: string;
-  diagnoseCopied: string;
   // settings
   settingsInsert: string;
   settingsAttachmentLocation: string;
@@ -106,8 +103,6 @@ const zh: Dict = {
   fragmentRangeBadge: (text) => `区域 ${text}`,
   fragmentRowsBadge: (a, b) => `第 ${a}–${b} 行`,
   fragmentElementBadge: (id) => `定位 #${id}`,
-  cmdDiagnoseName: "诊断当前笔记的嵌入",
-  diagnoseCopied: "诊断报告已复制到剪贴板；也可手动全选复制。",
   settingsInsert: "插入",
   settingsAttachmentLocation: "附件保存位置",
   settingsAttachmentLocationDesc: "通过命令、粘贴或拖拽插入的文件保存到哪里。",
@@ -173,8 +168,6 @@ const en: Dict = {
   fragmentRangeBadge: (text) => `Range ${text}`,
   fragmentRowsBadge: (a, b) => `Rows ${a}–${b}`,
   fragmentElementBadge: (id) => `Anchor #${id}`,
-  cmdDiagnoseName: "Diagnose embeds in the current note",
-  diagnoseCopied: "Report copied to the clipboard; you can also select the text and copy it manually.",
   settingsInsert: "Insertion",
   settingsAttachmentLocation: "Attachment location",
   settingsAttachmentLocationDesc: "Where files inserted via command, paste or drag & drop are saved.",

@@ -91,6 +91,7 @@ export class AnyViewerFileView extends FileView {
 
     await renderFileInto(this.plugin, frame, file, kind, {
       locate: this.pendingLocate,
+      direct: true,
       pptxWidth: Math.max(480, Math.min(1080, this.contentEl.clientWidth || 900)),
       pptxHeight: Math.max(300, this.contentEl.clientHeight - 40 || 500),
       heightHint: kind === "html" ? Math.max(300, this.contentEl.clientHeight - 40 || 500) : undefined,

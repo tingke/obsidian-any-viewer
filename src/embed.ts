@@ -122,9 +122,11 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
     const data = await app.vault.readBinary(file);
     loading.remove();
     stage.setAttribute("aria-busy", "false");
-    await enqueueRender(async () => {
-      await withTimeout(renderer.render({ ...ctx, data }), RENDER_TIMEOUT_MS, `${file.name} (${kind})`);
-    });
+    // Tab views are user-initiated singletons and jump ahead of the shared
+    // queue; inline embeds serialize so same-type parses never deadlock.
+    const run = () => withTimeout(renderer.render({ ...ctx, data }), RENDER_TIMEOUT_MS, `${file.name} (${kind})`);
+    if (ctx.opts.direct) await run();
+    else await enqueueRender(run);
     if (ctx.opts.locate) renderer.locate?.({ ...ctx, data });
   } catch (err) {
     console.error("[Any Viewer] render failed:", err);

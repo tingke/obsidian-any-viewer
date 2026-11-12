@@ -102,6 +102,9 @@ async function renderWithExcelJS(container: HTMLElement, data: ArrayBuffer, T: P
   const palette = await loadThemePalette(data);
   const wb: Workbook = new ExcelJS.Workbook();
   await wb.xlsx.load(data);
+  // Long parses can outlive the embed (timeout / note closed) — anything
+  // appended after the stage left the document is garbage, not content.
+  if (!container.isConnected) return;
   if (!wb.worksheets.length) {
     container.createDiv({ cls: "any-viewer-empty", text: T.emptyWorkbook ?? "(empty workbook)" });
     return;
