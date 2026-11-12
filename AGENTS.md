@@ -42,9 +42,9 @@
 - 链接解析有 basename 兜底（`util.ts` 的 `resolveByBasename`）：metadataCache 解析不到时按文件名遍历 vault（同目录优先、最短路径次之）。这是功能不是补丁——让"检测所有文件扩展名"关闭时卡片与预览照常工作，**不要移除**；真正的坏链（vault 内无此文件）仍交给 Obsidian 的未解析芯片。
 - **两种片段语义并存，不要合并**：嵌入（`RenderIntoOptions.frag`）= 裁剪显示（xlsx 片段同时隐藏工作表标签栏）；标签页（`RenderIntoOptions.locate`）= 完整文件 + 渲染后自动定位到片段位置（`FileRenderer.locate` 钩子）。嵌入点"在标签页打开"即切换到 locate 语义（`openFileWithFragment`）。
 
-## 7. 上架（两段式：先送审，后发版）
+## 7. 上架（先发版，后送审）
 
-顺序是硬要求：先让仓库源码过官方审评，通过之后才打 tag、发 Release。审评没结果之前**只推 main，不打 tag、不发 Release**——Release 一旦发出，下载三件套的用户拿到的就是没过审的产物。
+官方送审门禁要求 manifest 版本对应的 GitHub Release **已经发布**——审评扫描的就是 Release 附件，所以顺序是：发版 → 网页送审 → 照意见修改 → 升版本号发新版本 → 重新送审。（2026-11-12 实测：未发 Release 时送审直接被拒 "No release matches your manifest version"。）
 
 每次上架前必跑官方 lint（与社区目录自动审核同源，脚本移植自 bz-reader 的 `scripts/lint-obsidian.mjs`）：
 
@@ -64,11 +64,8 @@ npm run lint:obsidian
 3. 三道门：`npm run build && npm run lint && npm test`（快速门禁可用 `npm run verify` = typecheck + 单测 + 官方 lint）；
 4. 版本号三处同步：`manifest.json` / `package.json` / `versions.json`；
 5. 合规自查：`manifest.json` 与 `package.json` 的 description 不出现 "Obsidian"；`README.md` / `README.zh.md` 披露付费与联网；
-6. 提交并推送 main，等官方审评（community.obsidian.md 网页提交）。
-   - **不通过**：照报错在 main 上继续改，重跑第 1–5 步再审；同一版本号可以反复送审。
-   - **通过**：才进发版段。
-
-### 发版段（审评通过之后）
-
-7. 在送审通过的那个提交上打 tag 并推送：`git tag <版本> && git push origin <版本>`——tag 与 `manifest.version` 逐字相同、**不带 `v`**，此后不再改代码（要改就回送审段重审）；
-8. CI（`.github/workflows/release.yml`）在 tag 上自动构建、校验 tag = manifest.version、创建 Release（main.js / manifest.json / styles.css + 构建出处证明）；`gh release view <版本>` 确认已转正。
+6. 提交并推送 main；
+7. 打 tag 并推送：`git tag <版本> && git push origin <版本>`——tag 与 `manifest.version` 逐字相同、**不带 `v`**；
+8. CI（`.github/workflows/release.yml`）自动构建、校验 tag = manifest.version、发布 Release（三件套 + 出处证明），**正文自动提取 CHANGELOG.md 对应版本小节**（CHANGELOG 缺小节则构建失败，强制文档同步）；`gh release view <版本>` 确认；
+9. 到 community.obsidian.md 网页提交送审（此时门禁校验 Release 已存在）；
+10. 审评不通过：照报错修改 → **升版本号**（如 0.5.1）→ 重复 1–8 发新版本 → 重新送审；审评通过即完成，无需额外操作。
