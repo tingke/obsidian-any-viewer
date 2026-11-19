@@ -1,21 +1,49 @@
 import { Editor, Notice, Plugin } from "obsidian";
 import { EmbedRenderer } from "./embed";
 import { InsertManager } from "./insert";
+import { notePosition, ReadingPositionMap, sanitizePositions } from "./positions";
 import { AnyViewerSettingTab } from "./settings";
 import { DEFAULT_SETTINGS, AnyViewerSettings } from "./settings";
 import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
 import { ANY_VIEW_TYPE, AnyViewerFileView } from "./view";
 import { t } from "./i18n";
 
+/** data.json envelope version. v1 (legacy) = the settings object itself. */
+const DATA_FORMAT = 2;
+
 export default class AnyViewerPlugin extends Plugin {
   settings: AnyViewerSettings = { ...DEFAULT_SETTINGS };
+  /** Tab-channel reading positions, persisted inside data.json (see positions.ts). */
+  readingPositions: ReadingPositionMap = new Map();
   private insertManager?: InsertManager;
   private embedRenderer?: EmbedRenderer;
+  private positionPersistTimer?: number;
 
   async onload(): Promise<void> {
     await this.loadSettings();
 
     this.addSettingTab(new AnyViewerSettingTab(this.app, this));
+
+    // Style Settings integration (v0.6 style-settings package): the @settings
+    // block lives in styles.css and Style Settings picks it up on this trigger.
+    // No-op when Style Settings is not installed.
+    this.app.workspace.trigger("parse-style-settings");
+
+    // In-document search, registered as a real command so it appears under
+    // Settings → Hotkeys and users can rebind it. Default Mod+F mirrors the
+    // editor search muscle memory; in markdown editors the core editor search
+    // keeps its binding — this only fires inside Any Viewer tab views.
+    this.addCommand({
+      id: "search-in-document-view",
+      name: "在文档中搜索",
+      hotkeys: [{ modifiers: ["Mod"], key: "f" }],
+      checkCallback: (checking: boolean) => {
+        const view = this.app.workspace.getActiveViewOfType(AnyViewerFileView);
+        if (!view || !view.hasSearch()) return false;
+        if (!checking) view.openSearch();
+        return true;
+      },
+    });
 
     // Dedicated tab view for supported office/html files.
     // Register one extension at a time: another plugin may already own some
@@ -79,12 +107,47 @@ export default class AnyViewerPlugin extends Plugin {
   }
 
   async loadSettings(): Promise<void> {
-    const stored = (await this.loadData()) as Partial<AnyViewerSettings> | null;
-    this.settings = { ...DEFAULT_SETTINGS, ...stored };
+    const raw = (await this.loadData()) as Record<string, unknown> | null;
+    if (raw && raw.format === DATA_FORMAT) {
+      // v2 envelope: settings and reading positions live side by side.
+      this.settings = { ...DEFAULT_SETTINGS, ...((raw.settings as Partial<AnyViewerSettings> | undefined) ?? {}) };
+      this.readingPositions = sanitizePositions(raw.readingPositions);
+    } else {
+      // v1 (or empty): the whole file is the settings object — nothing to migrate.
+      this.settings = { ...DEFAULT_SETTINGS, ...((raw as Partial<AnyViewerSettings> | null) ?? {}) };
+    }
   }
 
   async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
+    await this.saveData(this.exportData());
+  }
+
+  /** Everything persisted in data.json: settings + tab reading positions. */
+  private exportData(): Record<string, unknown> {
+    return {
+      format: DATA_FORMAT,
+      settings: this.settings,
+      readingPositions: Object.fromEntries(this.readingPositions),
+    };
+  }
+
+  /** Record a tab view reading position; persists on a short debounce. */
+  noteReadingPosition(path: string, pos: { scroll: number; sheet?: string }): void {
+    notePosition(this.readingPositions, path, pos);
+    window.clearTimeout(this.positionPersistTimer);
+    this.positionPersistTimer = window.setTimeout(() => void this.persistReadingPositions(), 3000);
+  }
+
+  /** Flush pending position writes (view close, plugin unload). */
+  async persistReadingPositions(): Promise<void> {
+    window.clearTimeout(this.positionPersistTimer);
+    await this.saveData(this.exportData());
+  }
+
+  onunload(): void {
+    // Fire-and-forget: saveData during unload still completes reliably, but
+    // Plugin.onunload is sync — don't hand it a Promise.
+    void this.persistReadingPositions();
   }
 
 }

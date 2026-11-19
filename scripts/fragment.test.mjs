@@ -48,8 +48,21 @@ try {
   assert.equal(pages("page=0"), null);
   assert.equal(pages("page=abc"), null);
   assert.equal(pages("page=3~x"), null);
-  assert.equal(parseFragment("附录", "docx"), null);
   assert.equal(parseFragment("Page=3", "pptx").start, 3); // case-insensitive
+
+  // --- docx heading fragments (v0.6): non-page text resolves as a heading;
+  // unresolved headings fall back to the whole document at render time ---
+  const h1 = parseFragment("非功能需求", "docx");
+  assert.equal(h1.type, "heading");
+  assert.equal(h1.text, "非功能需求");
+  const h2 = parseFragment("第三章 结论", "docx");
+  assert.equal(h2.type, "heading");
+  assert.equal(h2.text, "第三章 结论");
+  assert.equal(parseFragment("非功能需求", "pptx"), null); // pptx unchanged
+  // "page=abc" on docx: no longer null — degrades to a heading lookup that
+  // cannot resolve, i.e. the same whole-document fallback as before.
+  assert.equal(parseFragment("page=abc", "docx").type, "heading");
+  assert.equal(parseFragment("附录", "docx").type, "heading");
 
   // --- sheet forms ---
   const s1 = parseFragment("Sheet2", "sheet");

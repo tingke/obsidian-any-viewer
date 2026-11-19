@@ -1,4 +1,6 @@
-import { requestUrl } from "obsidian";
+import { getIcon, requestUrl, TFile } from "obsidian";
+import type AnyViewerPlugin from "./main";
+import type { Dict } from "./i18n";
 
 /**
  * Renders an HTML file inside a sandboxed iframe built with `srcdoc`.
@@ -15,7 +17,7 @@ import { requestUrl } from "obsidian";
 export async function renderHtmlFrame(
   container: HTMLElement,
   data: ArrayBuffer,
-  opts: { allowScripts: boolean; height?: number; width?: number; maxHeight?: number; resourceUrl?: string; scrollToId?: string }
+  opts: { allowScripts: boolean; height?: number; width?: number; maxHeight?: number; resourceUrl?: string; scrollToId?: string; extractElement?: string }
 ): Promise<void> {
   const text = new TextDecoder().decode(data);
   const parsed = new DOMParser().parseFromString(text, "text/html");
@@ -60,6 +62,20 @@ export async function renderHtmlFrame(
       }
     })
   );
+
+  // `#元素id` frag semantics (v0.6 T3.2): keep ONLY the target element in the
+  // body — <head> styles survive so the fragment keeps its styling context.
+  // Unresolved id → silently render the whole page (consistent fallback).
+  if (opts.extractElement) {
+    const target = parsed.getElementById(opts.extractElement);
+    if (target) {
+      const body = parsed.body;
+      while (body.firstChild) body.removeChild(body.firstChild);
+      body.appendChild(target);
+    } else {
+      console.warn(`[Any Viewer] html element "#${opts.extractElement}" not found — rendering the whole page`);
+    }
+  }
 
   const sandbox = ["allow-forms", "allow-popups", "allow-modals", "allow-same-origin"];
   if (opts.allowScripts) sandbox.push("allow-scripts");
@@ -119,4 +135,105 @@ export async function renderHtmlFrame(
       /* fixed sizing still applies */
     }
   });
+}
+
+/**
+ * Split raw HTML source into (class, text) tokens for cheap, zero-dependency
+ * highlighting (v0.6 T3.1 验收反馈). Not a parser — a tokenizer good enough
+ * for display: comments, doctype, tag names, attribute names/values, strings.
+ */
+function tokenizeHtmlSource(text: string): { cls: string | null; text: string }[] {
+  const tokens: { cls: string | null; text: string }[] = [];
+  const re = /(<!--[\s\S]*?-->)|(<!DOCTYPE[^>]*>)|(<\/?)([a-zA-Z][\w:.-]*)([^>]*?)(\/?>)|([^<]+)|</g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text))) {
+    if (m.index > last) tokens.push({ cls: null, text: text.slice(last, m.index) });
+    if (m[1] !== undefined) {
+      tokens.push({ cls: "tok-comment", text: m[1] });
+    } else if (m[2] !== undefined) {
+      tokens.push({ cls: "tok-doctype", text: m[2] });
+    } else if (m[3] !== undefined) {
+      tokens.push({ cls: "tok-punct", text: m[3] });
+      tokens.push({ cls: "tok-tag", text: m[4] });
+      const attrs = m[5];
+      const attrRe = /([a-zA-Z_:][-\w:.]*)|(=)|("[^"]*"|'[^']*')|(\s+)|([^\s"'=]+)/g;
+      let aLast = 0;
+      let am: RegExpExecArray | null;
+      while ((am = attrRe.exec(attrs))) {
+        if (am.index > aLast) tokens.push({ cls: null, text: attrs.slice(aLast, am.index) });
+        const cls = am[1] !== undefined ? "tok-attr" : am[2] !== undefined ? "tok-punct" : am[3] !== undefined ? "tok-string" : null;
+        tokens.push({ cls, text: am[0] });
+        aLast = am.index + am[0].length;
+      }
+      if (aLast < attrs.length) tokens.push({ cls: null, text: attrs.slice(aLast) });
+      tokens.push({ cls: "tok-punct", text: m[6] });
+    } else if (m[7] !== undefined) {
+      tokens.push({ cls: null, text: m[7] });
+    } else {
+      tokens.push({ cls: "tok-punct", text: "<" });
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) tokens.push({ cls: null, text: text.slice(last) });
+  return tokens;
+}
+
+/**
+ * Source view (v0.6 T3.1): left-aligned, syntax-highlighted raw HTML in a
+ * scrolling <pre>. Highlighting stops at HIGHLIGHT_LIMIT (spans are per-token);
+ * large files cap at MAX_CHARS so a multi-megabyte document can't freeze the
+ * pane. buildSpan uses textContent only — the source is never parsed as HTML.
+ */
+export async function renderHtmlSource(container: HTMLElement, data: ArrayBuffer, opts?: { maxHeight?: number }): Promise<void> {
+  const MAX_CHARS = 1_000_000;
+  const HIGHLIGHT_LIMIT = 200_000;
+  let text = new TextDecoder().decode(data);
+  const truncated = text.length > MAX_CHARS;
+  if (truncated) text = text.slice(0, MAX_CHARS);
+  const box = container.createDiv({ cls: "any-viewer-html-source" });
+  if (opts?.maxHeight) box.setCssProps({ maxHeight: `${opts.maxHeight}px` });
+  const pre = box.createEl("pre", { cls: "any-viewer-html-source-code" });
+  const highlightLength = Math.min(text.length, HIGHLIGHT_LIMIT);
+  for (const token of tokenizeHtmlSource(text.slice(0, highlightLength))) {
+    const span = pre.createSpan({ cls: token.cls ?? undefined });
+    span.setText(token.text);
+  }
+  if (text.length > highlightLength) pre.createSpan({ text: text.slice(highlightLength) });
+  if (truncated) pre.createSpan({ text: "\n\n<!-- … truncated / 已截断 -->" });
+}
+
+/**
+ * Toggle one embed between reading (iframe) and source view. State lives on
+ * the stage element (dataset), so a fresh render always starts in reading
+ * mode. Swaps the button icon/label to reflect the mode being switched TO.
+ */
+export async function toggleHtmlView(
+  plugin: AnyViewerPlugin,
+  stage: HTMLElement,
+  file: TFile,
+  btn: HTMLButtonElement,
+  T: Dict,
+  opts: { allowScripts?: boolean; heightHint?: number; maxHeight?: number; extractElement?: string }
+): Promise<void> {
+  const toSource = stage.dataset.htmlSource !== "1";
+  stage.dataset.htmlSource = toSource ? "1" : "0";
+  const icon = getIcon(toSource ? "book-open" : "code");
+  if (icon) btn.replaceChildren(icon);
+  btn.setAttribute("aria-label", toSource ? T.viewReading : T.viewSource);
+  stage.empty();
+  const data = await plugin.app.vault.readBinary(file);
+  if (toSource) {
+    await renderHtmlSource(stage, data, { maxHeight: opts.maxHeight });
+  } else {
+    // Keep the embed's `#元素id` frag semantics (extraction) across the toggle —
+    // otherwise toggling back to reading mode silently widens to the whole page.
+    await renderHtmlFrame(stage, data, {
+      allowScripts: opts.allowScripts ?? true,
+      height: opts.heightHint,
+      maxHeight: opts.maxHeight,
+      resourceUrl: plugin.app.vault.getResourcePath(file),
+      extractElement: opts.extractElement,
+    });
+  }
 }

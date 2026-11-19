@@ -1,13 +1,13 @@
 {
   "name": "obsidian-any-viewer",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Insert and preview any file type (Word/Excel/PowerPoint/HTML/CSV and more) inside your notes",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "deploy": "npm run build && node scripts/deploy.cjs",
-    "test": "node scripts/fragment.test.mjs",
+    "test": "node scripts/fragment.test.mjs && node scripts/style-settings.test.mjs",
     "typecheck": "tsc -noEmit -skipLibCheck",
     "lint": "eslint .",
     "lint:obsidian": "node scripts/lint-obsidian.mjs",

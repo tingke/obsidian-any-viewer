@@ -140,6 +140,14 @@ export class AnyViewerSettingTab extends PluginSettingTab {
           },
           toggle("showEmbedHeader", T.settingsShowHeader, T.settingsShowHeaderDesc),
           toggle("htmlAllowScripts", T.settingsAllowScripts, T.settingsAllowScriptsDesc),
+          {
+            // text-only row (no control) pointing at the Style Settings panel
+            name: T.settingsStyleSettingsHint,
+            desc: T.settingsStyleSettingsHintDesc,
+            render: (setting) => {
+              setting.setName(T.settingsStyleSettingsHint).setDesc(T.settingsStyleSettingsHintDesc);
+            },
+          },
         ],
       },
     ];

@@ -20,6 +20,7 @@ type Dict = {
   loading: string;
   openInTab: string;
   openWithSystemApp: string;
+  reload: string;
   clickToOpenInTab: string;
   renderFailed: (msg: string) => string;
   emptyWorkbook: string;
@@ -37,6 +38,16 @@ type Dict = {
   fragmentRangeBadge: (text: string) => string;
   fragmentRowsBadge: (a: number, b: number) => string;
   fragmentElementBadge: (id: string) => string;
+  fragmentHeadingBadge: (text: string) => string;
+  // tab view outline (v0.6 M1) and in-document search (v0.6 M2)
+  outlineTitle: string;
+  searchPlaceholder: string;
+  searchPrev: string;
+  searchNext: string;
+  searchClose: string;
+  // html source/reading toggle (v0.6 T3.1)
+  viewSource: string;
+  viewReading: string;
   // settings
   settingsInsert: string;
   settingsAttachmentLocation: string;
@@ -68,6 +79,8 @@ type Dict = {
   settingsMaxHeightDesc: string;
   settingsShowHeader: string;
   settingsShowHeaderDesc: string;
+  settingsStyleSettingsHint: string;
+  settingsStyleSettingsHintDesc: string;
   settingsAllowScripts: string;
   settingsAllowScriptsDesc: string;
 };
@@ -87,6 +100,7 @@ const zh: Dict = {
   loading: "正在加载…",
   openInTab: "在标签页中打开",
   openWithSystemApp: "用系统应用打开",
+  reload: "重新加载",
   clickToOpenInTab: "点击在标签页中打开",
   renderFailed: (msg) => `渲染失败：${msg}`,
   emptyWorkbook: "（空工作簿）",
@@ -103,6 +117,14 @@ const zh: Dict = {
   fragmentRangeBadge: (text) => `区域 ${text}`,
   fragmentRowsBadge: (a, b) => `第 ${a}–${b} 行`,
   fragmentElementBadge: (id) => `定位 #${id}`,
+  fragmentHeadingBadge: (text) => `标题 ${text}`,
+  outlineTitle: "大纲",
+  searchPlaceholder: "查找…",
+  searchPrev: "上一处 (Shift+Enter)",
+  searchNext: "下一处 (Enter)",
+  searchClose: "关闭搜索 (Esc)",
+  viewSource: "查看源码",
+  viewReading: "返回阅读模式",
   settingsInsert: "插入",
   settingsAttachmentLocation: "附件保存位置",
   settingsAttachmentLocationDesc: "通过命令、粘贴或拖拽插入的文件保存到哪里。",
@@ -133,6 +155,8 @@ const zh: Dict = {
   settingsMaxHeightDesc: "笔记内嵌入内容超过此高度（像素）后出现滚动条。",
   settingsShowHeader: "显示嵌入标题栏",
   settingsShowHeaderDesc: "在嵌入内容上方显示文件名与快捷操作按钮。",
+  settingsStyleSettingsHint: "外观微调（Style Settings）",
+  settingsStyleSettingsHintDesc: "安装 Style Settings 插件后，可在其面板调整 Any Viewer 的密度尺寸、文件图标颜色与形态。",
   settingsAllowScripts: "允许 HTML 运行脚本",
   settingsAllowScriptsDesc: "关闭后嵌入的 HTML 文件中的 JavaScript 不会执行（更安全，但交互页面会失效）。",
 };
@@ -152,6 +176,7 @@ const en: Dict = {
   loading: "Loading…",
   openInTab: "Open in tab",
   openWithSystemApp: "Open with system app",
+  reload: "Reload",
   clickToOpenInTab: "Click to open in a tab",
   renderFailed: (msg) => `Render failed: ${msg}`,
   emptyWorkbook: "(empty workbook)",
@@ -168,6 +193,14 @@ const en: Dict = {
   fragmentRangeBadge: (text) => `Range ${text}`,
   fragmentRowsBadge: (a, b) => `Rows ${a}–${b}`,
   fragmentElementBadge: (id) => `Anchor #${id}`,
+  fragmentHeadingBadge: (text) => `Heading ${text}`,
+  outlineTitle: "Outline",
+  searchPlaceholder: "Find…",
+  searchPrev: "Previous match (Shift+Enter)",
+  searchNext: "Next match (Enter)",
+  searchClose: "Close search (Esc)",
+  viewSource: "View source",
+  viewReading: "Back to reading mode",
   settingsInsert: "Insertion",
   settingsAttachmentLocation: "Attachment location",
   settingsAttachmentLocationDesc: "Where files inserted via command, paste or drag & drop are saved.",
@@ -198,6 +231,8 @@ const en: Dict = {
   settingsMaxHeightDesc: "Inline embeds scroll once taller than this (pixels).",
   settingsShowHeader: "Show embed header bar",
   settingsShowHeaderDesc: "Show the filename and quick actions above embed content.",
+  settingsStyleSettingsHint: "Appearance tweaks (Style Settings)",
+  settingsStyleSettingsHintDesc: "Install the Style Settings plugin to tweak Any Viewer density, file icon colors and shapes in its panel.",
   settingsAllowScripts: "Allow scripts in HTML",
   settingsAllowScriptsDesc: "When off, JavaScript inside embedded HTML files won't run (safer, but interactive pages break).",
 };

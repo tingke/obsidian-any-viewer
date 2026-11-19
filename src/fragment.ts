@@ -7,6 +7,8 @@ import type { RenderKind } from "./renderers";
  * (`-` accepted), fragments must precede the `|alias` (Obsidian grammar):
  *   pptx / docx : `page=N` / `N` (single page, N ≡ N~N), `page=N~M` / `N~M`
  *                 (range; open end `page=3~` means "to the last page"),
+ *   docx only   : any other text = heading fragment (v0.6) — `#章节标题`,
+ *                 unresolved headings fall back to the whole document,
  *   sheet       : `SheetName`, `A1:D10`, `5:20` (rows), `SheetName!A1:D10`,
  *                 `SheetName!5:20` — split at the LAST `!` so names may
  *                 contain spaces/unicode,
@@ -31,6 +33,7 @@ export interface CellRange {
 
 export type ParsedFragment =
   | { type: "pages"; start: number; end: number; raw: string }
+  | { type: "heading"; text: string; raw: string }
   | { type: "sheet"; name: string; raw: string }
   | { type: "sheetRange"; sheet?: string; range: CellRange; isRowForm: boolean; raw: string }
   | { type: "element"; id: string; raw: string };
@@ -121,6 +124,10 @@ export function parseFragment(raw: string, kind: RenderKind): ParsedFragment | n
       const pages = parsePageForm(m);
       if (pages) return { type: "pages", ...pages, raw: text };
     }
+    // docx only: any other text is a heading fragment (v0.6) — matched against
+    // rendered heading paragraphs; not-found headings fall back to the whole
+    // document. pptx keeps the stricter "unparsed → null" behavior.
+    if (kind === "docx") return { type: "heading", text, raw: text };
     return null;
   }
 

@@ -1,9 +1,10 @@
 import { TFile } from "obsidian";
 import type AnyViewerPlugin from "./main";
 import { buildFileCard } from "./card";
-import { renderDocx } from "./docx";
+import { buildDocxOutline, findDocxHeading, renderDocx, type DocxOutlineEntry } from "./docx";
 import type { PageRange, ParsedFragment } from "./fragment";
-import { renderHtmlFrame } from "./html";
+import { renderHtmlFrame, renderHtmlSource } from "./html";
+import type { ReadingPosition } from "./positions";
 import { renderPptx } from "./pptx";
 import { renderSheet, type SheetRenderOpts } from "./sheet";
 import { DOCX_EXTS, HTML_EXTS, PPTX_EXTS, SHEET_EXTS } from "./util";
@@ -43,6 +44,10 @@ export interface RenderIntoOptions {
   frag?: ParsedFragment;
   /** Display-syntax fragment for TAB/locate mode — render the FULL file, then bring this position into view. */
   locate?: ParsedFragment;
+  /** Tab-only memory restore hint: remembered active worksheet (sheet kind, no fragment). */
+  memorySheet?: string;
+  /** Tab-only HTML view mode: true renders the raw source instead of the iframe. */
+  htmlSource?: boolean;
 }
 
 /** Card renderers draw without file bytes; binary renderers get real data. */
@@ -82,6 +87,37 @@ export abstract class FileRenderer {
    * fragment position into view (scroll/activate). Default: nothing to do.
    */
   locate?(ctx: RenderContext): void;
+
+  /**
+   * Tab-view reading-position memory: the element whose scrollTop encodes the
+   * reading position. Default: the stage itself. Return null to opt out
+   * (html scrolls inside its iframe — out of M0 scope).
+   */
+  scrollSurface?(stage: HTMLElement): HTMLElement | null;
+
+  /**
+   * Re-apply a remembered reading position post-render. Default: set the
+   * surface's scrollTop directly. Override when layout settles asynchronously
+   * (pptx builds slides incrementally).
+   */
+  restorePosition?(stage: HTMLElement, mem: ReadingPosition): void;
+
+  /** Extra position info to store alongside scrollTop (e.g. active worksheet). */
+  positionHint?(stage: HTMLElement): { sheet?: string } | undefined;
+
+  /**
+   * Tab-view outline entries built from the rendered stage (docx headings).
+   * Return [] when the document has no outline. Call after render resolves.
+   */
+  buildOutline?(stage: HTMLElement): OutlineEntry[];
+}
+
+/** One sidebar-outline entry; `target` is the click-to-scroll element. */
+export interface OutlineEntry {
+  level: number;
+  text: string;
+  page?: number;
+  target: HTMLElement;
 }
 
 /** Fragment (display syntax) → pptx/docx page range, if applicable. */
@@ -111,13 +147,31 @@ export class DocxRenderer extends FileRenderer {
   readonly kind = "docx" as const;
 
   async render(ctx: RenderContext): Promise<void> {
-    await renderDocx(ctx.stage, ctx.data, { pageRange: ctx.opts.locate ? undefined : pagesOf(ctx.frag) });
+    await renderDocx(ctx.stage, ctx.data, {
+      pageRange: ctx.opts.locate ? undefined : pagesOf(ctx.frag),
+      // `#标题` frag semantics: clip from the heading's page to the end.
+      heading: !ctx.opts.locate && ctx.frag?.type === "heading" ? ctx.frag.text : undefined,
+    });
   }
 
   locate(ctx: RenderContext): void {
     const frag = ctx.opts.locate;
-    if (frag?.type !== "pages") return;
-    ctx.stage.querySelectorAll<HTMLElement>(".docx-wrapper > section.docx")[frag.start - 1]?.scrollIntoView({ block: "start" });
+    if (frag?.type === "pages") {
+      ctx.stage.querySelectorAll<HTMLElement>(".docx-wrapper > section.docx")[frag.start - 1]?.scrollIntoView({ block: "start" });
+      return;
+    }
+    // `#标题` locate semantics: full document already rendered — scroll to it
+    // (same exact-then-prefix matching as the frag clip, so both channels land
+    // on the same heading).
+    if (frag?.type === "heading") {
+      findDocxHeading(ctx.stage, frag.text)?.scrollIntoView({ block: "start" });
+    }
+  }
+
+  /** Outline from the rendered DOM — empty when no heading styles resolve. */
+  buildOutline(stage: HTMLElement): OutlineEntry[] {
+    const entries: DocxOutlineEntry[] = buildDocxOutline(stage);
+    return entries.map((e) => ({ level: e.level, text: e.text, page: e.page, target: e.el }));
   }
 }
 
@@ -125,7 +179,11 @@ export class SheetRenderer extends FileRenderer {
   readonly kind = "sheet" as const;
 
   async render(ctx: RenderContext): Promise<void> {
-    const opts = ctx.opts.locate ? sheetLocateOpts(ctx.opts.locate) : sheetOptsOf(ctx.frag);
+    // Locate wins over fragment; remembered worksheet applies only when both
+    // are absent (tab view, no fragment — memory adjudication rule 4).
+    const opts = ctx.opts.locate
+      ? sheetLocateOpts(ctx.opts.locate)
+      : sheetOptsOf(ctx.frag) ?? (ctx.opts.memorySheet ? { activeSheetName: ctx.opts.memorySheet } : undefined);
     await renderSheet(ctx.stage, ctx.file, ctx.data, t(ctx.plugin.settings), opts);
   }
 
@@ -136,6 +194,12 @@ export class SheetRenderer extends FileRenderer {
         .querySelector<HTMLElement>(`.any-viewer-sheet-content table tr:nth-child(${frag.range.sr})`)
         ?.scrollIntoView({ block: "start" });
     }
+  }
+
+  positionHint(stage: HTMLElement): { sheet?: string } | undefined {
+    const active = stage.querySelector<HTMLElement>(".any-viewer-tab.is-active");
+    const sheet = active?.textContent?.trim();
+    return sheet ? { sheet } : undefined;
   }
 }
 
@@ -152,6 +216,25 @@ export class PptxRenderer extends FileRenderer {
       locatePage: pagesOf(ctx.opts.locate)?.start,
     });
   }
+
+  /** pptx-preview scrolls inside its own wrapper, not the stage. */
+  scrollSurface(stage: HTMLElement): HTMLElement | null {
+    return stage.querySelector<HTMLElement>(".pptx-preview-wrapper");
+  }
+
+  /** Slides build incrementally — apply the remembered scrollTop once they settle. */
+  restorePosition(stage: HTMLElement, mem: ReadingPosition): void {
+    let tries = 0;
+    const tick = () => {
+      const wrap = stage.querySelector<HTMLElement>(".pptx-preview-wrapper");
+      if (wrap) {
+        wrap.scrollTop = mem.scroll;
+        return;
+      }
+      if (++tries <= 240) window.requestAnimationFrame(tick);
+    };
+    window.requestAnimationFrame(tick);
+  }
 }
 
 export class HtmlRenderer extends FileRenderer {
@@ -161,14 +244,27 @@ export class HtmlRenderer extends FileRenderer {
   async render(ctx: RenderContext): Promise<void> {
     // Vault.getResourcePath(path) is a documented API since 1.7.2.
     const resourceUrl = ctx.plugin.app.vault.getResourcePath(ctx.file);
-    const anchorId = ctx.frag?.type === "element" ? ctx.frag.id : ctx.opts.locate?.type === "element" ? ctx.opts.locate.id : undefined;
+    if (ctx.opts.htmlSource) {
+      await renderHtmlSource(ctx.stage, ctx.data, { maxHeight: ctx.opts.maxHeight });
+      return;
+    }
+    // Two fragment semantics (AGENTS.md §6, never merged): an embed `#元素id`
+    // EXTRACTS the element (frag clips); a tab locate scrolls to it (v0.6 T3.2).
+    const extractElement = ctx.frag?.type === "element" ? ctx.frag.id : undefined;
+    const scrollToId = ctx.opts.locate?.type === "element" ? ctx.opts.locate.id : undefined;
     await renderHtmlFrame(ctx.stage, ctx.data, {
       allowScripts: ctx.opts.allowScripts ?? true,
       height: ctx.opts.heightHint,
       maxHeight: ctx.opts.maxHeight,
       resourceUrl,
-      scrollToId: anchorId,
+      scrollToId,
+      extractElement,
     });
+  }
+
+  /** Scrolling happens inside the iframe — memory record/restore is out of M0 scope. */
+  scrollSurface(): HTMLElement | null {
+    return null;
   }
 }
 

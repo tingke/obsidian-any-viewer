@@ -6,6 +6,7 @@ import { OPEN_END, formatCellRange, parseFragment } from "./fragment";
 import type { ParsedFragment } from "./fragment";
 import { EMPTY_DATA, getRenderer, kindForExt, type RenderContext, type RenderIntoOptions, type RenderKind } from "./renderers";
 import { isNativeExt, openFileExternally, openFileWithFragment, resolveByBasename } from "./util";
+import { toggleHtmlView } from "./html";
 import { t } from "./i18n";
 import type { Dict } from "./i18n";
 
@@ -73,10 +74,16 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
     // fragment position (page N / sheet / range start / element anchor),
     // while the inline embed itself stays clipped to the fragment.
     const openInTab = () => void openFileWithFragment(app, file, frag);
-    title.addEventListener("click", openInTab);
+    // stopPropagation: the title is embed chrome too — without it Obsidian's
+    // span-level embed handler fires on top of ours (same-file duplicate tab).
+    title.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openInTab();
+    });
     title.addEventListener("keydown", (ev: KeyboardEvent) => {
       if (ev.key !== "Enter" && ev.key !== " ") return;
       ev.preventDefault();
+      ev.stopPropagation();
       openInTab();
     });
 
@@ -95,6 +102,32 @@ export async function renderFileInto(plugin: AnyViewerPlugin, host: HTMLElement,
 
   const stage = host.createDiv({ cls: "any-viewer-stage" });
   stage.setAttribute("aria-live", "polite");
+  // HTML embeds get the source/reading toggle in the header (v0.6 T3.1); the
+  // tab view carries the same toggle in its pane toolbar (view.ts).
+  if (kind === "html" && opts.showHeader !== false) {
+    const headerEl = host.querySelector<HTMLElement>(".any-viewer-header");
+    const btn = headerEl?.querySelector<HTMLButtonElement>(".any-viewer-html-toggle");
+    if (headerEl && !btn) {
+      const toggle = addHeaderAction(headerEl, {
+        icon: "code",
+        label: T.viewSource,
+        onClick: () => {
+          if (toggle.dataset.busy === "1") return;
+          toggle.dataset.busy = "1";
+          void toggleHtmlView(plugin, stage, file, toggle, T, {
+            allowScripts: opts.allowScripts,
+            heightHint: opts.heightHint,
+            maxHeight: opts.maxHeight,
+            // preserve the embed's `#元素id` extraction across the toggle
+            extractElement: opts.frag?.type === "element" ? opts.frag.id : undefined,
+          }).finally(() => {
+            delete toggle.dataset.busy;
+          });
+        },
+      });
+      toggle.addClass("any-viewer-html-toggle");
+    }
+  }
   // The card width is applied to the outer embed span (has-width); content keeps
   // its natural size and scrolls inside. pptx & html manage their own scrolling.
   const effectiveHeight = opts.heightHint ?? opts.maxHeight;
@@ -156,6 +189,8 @@ function fragmentBadgeText(frag: ParsedFragment | undefined, T: Dict): string | 
     }
     case "element":
       return T.fragmentElementBadge(frag.id);
+    case "heading":
+      return T.fragmentHeadingBadge(frag.text);
   }
 }
 
@@ -410,6 +445,16 @@ export class EmbedRenderer {
       },
       true
     );
+    // Controls: their own handlers already ran at the target phase — stop the
+    // event HERE (bubble) so it never reaches Obsidian's embed handler. The
+    // capture-phase exemption above lets the click through, and without this
+    // stop a header button click ALSO opened the file in a tab (2026-11-19).
+    span.addEventListener("click", (ev: MouseEvent) => {
+      const target = ev.target as HTMLElement | null;
+      if (target && target.closest("button, .clickable-icon, input, textarea, select, [contenteditable]")) {
+        ev.stopPropagation();
+      }
+    });
 
     // Obsidian may rewrite the embed span later (e.g. on re-render); re-apply then.
     const guard = new MutationObserver(() => {

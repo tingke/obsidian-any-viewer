@@ -6,6 +6,178 @@
  * radii or spacing outside the token layer. Never redefine host variables.
  */
 
+/* @settings
+name: Any Viewer
+id: any-viewer
+settings:
+  - id: av-density
+    title: Density & sizes
+    title.zh: 密度与尺寸
+    description: Pixel sizes for Any Viewer chrome. Bare install = current defaults.
+    description.zh: Any Viewer 界面密度（像素）。不装 Style Settings 或重置后与默认完全一致。
+    type: heading
+    level: 1
+  - id: av-opt-header-height
+    title: Header bar height
+    title.zh: 标题栏高度
+    description: Height of the viewer header bar. On mobile keep ≥ 36.
+    description.zh: 嵌入/标签页标题栏高度。移动端建议不低于 36。
+    type: variable-number-slider
+    default: 36
+    min: 28
+    max: 56
+    step: 1
+  - id: av-opt-toolbar-button-size
+    title: Toolbar button size
+    title.zh: 工具栏按钮尺寸
+    description: Toolbar button square size.
+    description.zh: 标题栏操作按钮的边长。
+    type: variable-number-slider
+    default: 28
+    min: 24
+    max: 44
+    step: 1
+  - id: av-opt-stage-padding
+    title: Content padding
+    title.zh: 内容内边距
+    description: Padding around rendered content.
+    description.zh: 渲染内容四周的内边距。
+    type: variable-number-slider
+    default: 12
+    min: 0
+    max: 24
+    step: 1
+  - id: av-opt-table-cell-padding-block
+    title: Table cell padding
+    title.zh: 表格单元格内边距
+    description: Vertical padding inside spreadsheet cells.
+    description.zh: 表格单元格上下的内边距。
+    type: variable-number-slider
+    default: 4
+    min: 2
+    max: 8
+    step: 1
+  - id: av-opt-table-font-size
+    title: Table font size
+    title.zh: 表格字号
+    description: Spreadsheet table font size in pixels.
+    description.zh: 表格文字字号（像素）。
+    type: variable-select
+    default: 12
+    options:
+      - label: 11
+        value: 11
+      - label: 12
+        value: 12
+      - label: 13
+        value: 13
+      - label: 14
+        value: 14
+  - id: av-opt-scrollbar-size
+    title: Scrollbar width
+    title.zh: 滚动条宽度
+    description: Width of viewer scrollbars.
+    description.zh: 查看器滚动条宽度。
+    type: variable-number-slider
+    default: 8
+    min: 4
+    max: 16
+    step: 1
+  - id: av-opt-selected-tint
+    title: Selection / hover tint
+    title.zh: 选中与悬浮强调底
+    description: Accent tint strength (%) for selected and hovered rows.
+    description.zh: 选中与悬浮行的强调色浓度（%）。
+    type: variable-number-slider
+    default: 12
+    min: 4
+    max: 20
+    step: 1
+  - id: av-file-colors
+    title: File icon colors
+    title.zh: 文件图标颜色
+    description: Off by default — icons follow the host theme palette until enabled.
+    description.zh: 默认关闭——图标跟随宿主主题色板；开启后可逐色自定义。
+    type: heading
+    level: 1
+  - id: av-custom-file-colors
+    title: Custom file icon colors
+    title.zh: 自定义文件图标颜色
+    description: Enable to override the four file-type icon colors below.
+    description.zh: 开启后以下四个文件图标的颜色才生效。
+    type: class-toggle
+  - id: av-opt-file-word
+    title: Word blue
+    title.zh: Word 蓝
+    type: variable-themed-color
+    format: hex
+    default-light: '#3274c8'
+    default-dark: '#3274c8'
+  - id: av-opt-file-excel
+    title: Excel green
+    title.zh: Excel 绿
+    type: variable-themed-color
+    format: hex
+    default-light: '#16865c'
+    default-dark: '#16865c'
+  - id: av-opt-file-powerpoint
+    title: PowerPoint orange
+    title.zh: PowerPoint 橙
+    type: variable-themed-color
+    format: hex
+    default-light: '#c9632b'
+    default-dark: '#c9632b'
+  - id: av-opt-file-html
+    title: HTML cyan
+    title.zh: HTML 青
+    type: variable-themed-color
+    format: hex
+    default-light: '#16869b'
+    default-dark: '#16869b'
+  - id: av-forms
+    title: Shapes & modes
+    title.zh: 形态
+    description: Optional display modes. Empty/off = host theme as-is.
+    description.zh: 可选显示形态。默认关闭 = 完全跟随宿主主题。
+    type: heading
+    level: 1
+  - id: av-compact
+    title: Compact mode
+    title.zh: 紧凑模式
+    description: Tighter header, paddings and gaps.
+    description.zh: 标题栏、内边距与间距整体收紧。
+    type: class-toggle
+  - id: av-radius
+    title: Corner radius
+    title.zh: 圆角
+    description: Overall corner radius; empty follows the host theme.
+    description.zh: 圆角整体形态；留空跟随宿主主题。
+    type: class-select
+    allowEmpty: true
+    options:
+      - label: Tighter
+        label.zh: 收紧
+        value: av-radius-tight
+      - label: Larger
+        label.zh: 放大
+        value: av-radius-round
+      - label: Square
+        label.zh: 直角
+        value: av-radius-square
+  - id: av-flat-embed
+    title: Flat embeds (no shadow)
+    title.zh: 嵌入卡片去阴影
+    description: Remove the card shadow around embeds.
+    description.zh: 去掉嵌入卡片的外阴影。
+    type: class-toggle
+  - id: av-no-stripe
+    title: No table stripes
+    title.zh: 表格去斑马纹
+    description: Turn off zebra striping in spreadsheets.
+    description.zh: 关闭表格隔行底纹。
+    type: class-toggle
+*/
+
 /* ============================================================
  * Part 1 — Design tokens
  * Principle: host Obsidian theme first, semantic translation layer,
@@ -116,17 +288,23 @@
   --av-space-8: 32px;
   --av-space-10: 40px;
 
-  /* ---------- Size & density ---------- */
+  /* ---------- Size & density ----------
+     User-overrideable sizes (v0.6 style-settings package) follow one pattern:
+     each layer keeps ITS OWN default in the calc() fallback, so a bare
+     install resolves exactly to the pre-v0.6 value (zero-regression rule),
+     while a Style Settings value overrides every layer at once. Bare numbers
+     * 1px — never rely on Style Settings `format` behavior. */
   --av-control-height-sm: 28px;
   --av-control-height-md: 32px;
   --av-control-height-touch: 44px;
-  --av-header-height: 36px;
+  --av-header-height: calc(var(--av-opt-header-height, 36) * 1px);
   --av-icon-size-sm: 14px;
   --av-icon-size-md: 16px;
   --av-icon-size-lg: 20px;
-  --av-scrollbar-size: 8px;
-  --av-table-cell-padding-block: var(--av-space-1);
+  --av-scrollbar-size: calc(var(--av-opt-scrollbar-size, 8) * 1px);
+  --av-table-cell-padding-block: calc(var(--av-opt-table-cell-padding-block, 4) * 1px);
   --av-table-cell-padding-inline: var(--av-space-2);
+  --av-table-font-size: calc(var(--av-opt-table-font-size, 12) * 1px);
 
   /* ---------- Shape ---------- */
   --av-radius-xs: 3px;
@@ -170,7 +348,7 @@
   --av-header-padding-block: var(--av-space-1);
   --av-header-padding-inline: var(--av-space-2-5);
   --av-header-gap: var(--av-space-2);
-  --av-toolbar-button-size: var(--av-control-height-sm);
+  --av-toolbar-button-size: calc(var(--av-opt-toolbar-button-size, 28) * 1px);
   --av-toolbar-button-radius: var(--av-radius-sm);
   --av-toolbar-button-foreground: var(--av-text-secondary);
   --av-toolbar-button-hover-bg: var(--av-bg-hover);
@@ -178,7 +356,7 @@
 
   /* ---------- Component / stage ---------- */
   --av-stage-background: var(--av-bg-surface);
-  --av-stage-padding: var(--av-space-3);
+  --av-stage-padding: calc(var(--av-opt-stage-padding, 12) * 1px);
 
   /* ---------- Component / tabs ---------- */
   --av-tab-height: var(--av-control-height-sm);
@@ -245,8 +423,8 @@
 /* Old Electron builds without color-mix() keep the host hover/subtle fallbacks above. */
 @supports (background-color: color-mix(in srgb, #000000 10%, #ffffff)) {
   :is(.any-viewer-embed, .any-viewer-view) {
-    --av-bg-selected: color-mix(in srgb, var(--av-accent) 12%, var(--av-bg-surface));
-    --av-accent-soft: color-mix(in srgb, var(--av-accent) 8%, var(--av-bg-surface));
+    --av-bg-selected: color-mix(in srgb, var(--av-accent) calc(var(--av-opt-selected-tint, 12) * 1%), var(--av-bg-surface));
+    --av-accent-soft: color-mix(in srgb, var(--av-accent) calc(var(--av-opt-selected-tint, 8) * 1%), var(--av-bg-surface));
     --av-success-soft: color-mix(in srgb, var(--av-success) 10%, var(--av-bg-surface));
     --av-warning-soft: color-mix(in srgb, var(--av-warning) 12%, var(--av-bg-surface));
     --av-danger-soft: color-mix(in srgb, var(--av-danger) 8%, var(--av-bg-surface));
@@ -256,19 +434,23 @@
   }
 }
 
-/* Touch screens grow plugin controls only; document content keeps its own size. */
+/* Touch screens grow plugin controls only; document content keeps its own size.
+   Opt overrides win over touch adaptation (explicit user choice first) — the
+   layer defaults keep bare installs on the touch values. */
 .is-mobile :is(.any-viewer-embed, .any-viewer-view) {
   --av-control-height-sm: 36px;
   --av-control-height-md: 40px;
-  --av-header-height: 44px;
-  --av-stage-padding: var(--av-space-2);
+  --av-header-height: calc(var(--av-opt-header-height, 44) * 1px);
+  --av-toolbar-button-size: calc(var(--av-opt-toolbar-button-size, 36) * 1px);
+  --av-stage-padding: calc(var(--av-opt-stage-padding, 8) * 1px);
 }
 
 @media (pointer: coarse) {
   :is(.any-viewer-embed, .any-viewer-view) {
     --av-control-height-sm: 44px;
     --av-control-height-md: 44px;
-    --av-header-height: 48px;
+    --av-header-height: calc(var(--av-opt-header-height, 48) * 1px);
+    --av-toolbar-button-size: calc(var(--av-opt-toolbar-button-size, 44) * 1px);
   }
 }
 
@@ -714,7 +896,7 @@
    margins inside reading-mode embeds. */
 .any-viewer-sheet-content .any-viewer-sheet-table {
   border-collapse: collapse;
-  font-size: var(--av-font-size-xs);
+  font-size: var(--av-table-font-size);
   font-family: var(--av-font-content);
   color: var(--av-table-foreground);
   margin: 0;
@@ -809,16 +991,238 @@
   overflow: hidden;
 }
 
+/* Tab views fill the pane edge-to-edge: no card border, radius or margin
+   (v0.6 M4). No header bar either — the pane action bar carries the actions;
+   content below the optional search bar is the stage alone. */
 .any-viewer-view-frame {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  border: var(--av-border-width) solid var(--av-border-subtle);
-  border-radius: var(--av-radius-md);
-  margin: var(--av-space-2-5);
   overflow: hidden;
   background: var(--av-bg-surface);
+}
+
+/* Tab content fills the whole pane — stage breathing room is an embed-only
+   affordance. Docx pages carry their own margins; sheet flush edges are an
+   accepted tradeoff (fine-tunable later via the Style Settings package). */
+.any-viewer-view .any-viewer-stage {
+  padding: 0;
+}
+
+/* ---------- tab view: in-document search bar (v0.6 M2) ----------
+   Mirrors Obsidian's native editor search: floating bar pinned to the top
+   center of the pane, magnifier icon inside a rounded field, arrows + close
+   outside. Hidden until opened (any-viewer-hidden). */
+.any-viewer-view {
+  position: relative;
+}
+
+.any-viewer-search-bar {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--av-space-1);
+  width: min(560px, calc(100% - var(--av-space-6)));
+  padding: 3px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+}
+
+.any-viewer-search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.any-viewer-search-field svg {
+  position: absolute;
+  inset-inline-start: 8px;
+  width: var(--av-icon-size-sm);
+  height: var(--av-icon-size-sm);
+  color: var(--av-text-tertiary);
+  pointer-events: none;
+}
+
+.any-viewer-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline-start: 28px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+.any-viewer-search-input:focus {
+  border-color: var(--background-modifier-border-hover);
+}
+
+.any-viewer-search-count {
+  flex: 0 0 auto;
+  min-width: 40px;
+  text-align: center;
+  color: var(--av-text-secondary);
+  font-size: var(--av-font-size-sm, 12px);
+  font-variant-numeric: tabular-nums;
+}
+
+.any-viewer-search-bar button {
+  color: var(--av-text-secondary);
+}
+
+mark.any-viewer-search-hit {
+  background: var(--text-highlight-bg, rgba(255, 208, 0, 0.4));
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+mark.any-viewer-search-hit.is-current {
+  background: var(--text-accent);
+  color: var(--text-on-accent);
+}
+
+/* ---------- tab view: docx outline sidebar (v0.6 M1) ---------- */
+.any-viewer-view-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.any-viewer-view-body.has-outline {
+  flex-direction: row;
+}
+
+.any-viewer-outline {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  width: 224px;
+  min-height: 0;
+  border-right: var(--av-border-width) solid var(--av-border-subtle);
+  background: var(--av-bg-surface);
+}
+
+.any-viewer-outline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--av-space-2);
+  padding: var(--av-space-2) var(--av-space-3);
+  border-bottom: var(--av-border-width) solid var(--av-border-subtle);
+}
+
+.any-viewer-outline-title {
+  font-weight: var(--av-font-weight-medium, 600);
+  color: var(--av-text-secondary);
+}
+
+.any-viewer-outline-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-block: var(--av-space-2);
+}
+
+.any-viewer-outline-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--av-space-2);
+  padding-block: 3px;
+  padding-inline: 8px 10px;
+  margin-inline: var(--av-space-1);
+  border-radius: var(--av-radius-sm);
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+/* heading-level indent (clamped 1–9, set from the outline entry level) */
+.any-viewer-outline-item.is-lvl-2 { padding-inline-start: 22px; }
+.any-viewer-outline-item.is-lvl-3 { padding-inline-start: 36px; }
+.any-viewer-outline-item.is-lvl-4 { padding-inline-start: 50px; }
+.any-viewer-outline-item.is-lvl-5 { padding-inline-start: 64px; }
+.any-viewer-outline-item.is-lvl-6 { padding-inline-start: 78px; }
+.any-viewer-outline-item.is-lvl-7 { padding-inline-start: 92px; }
+.any-viewer-outline-item.is-lvl-8 { padding-inline-start: 106px; }
+.any-viewer-outline-item.is-lvl-9 { padding-inline-start: 120px; }
+
+.any-viewer-outline-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.any-viewer-outline-item.is-active {
+  background: var(--background-modifier-active-hover);
+}
+
+.any-viewer-outline-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.any-viewer-outline-page {
+  flex: 0 0 auto;
+  color: var(--av-text-tertiary);
+  font-size: var(--av-font-size-sm, 12px);
+  font-variant-numeric: tabular-nums;
+}
+
+.any-viewer-outline.is-collapsed .any-viewer-outline-list {
+  display: none;
+}
+
+/* ---------- html source/reading toggle (v0.6 T3.1) ---------- */
+.any-viewer-html-source {
+  overflow: auto;
+  min-height: 0;
+  background: var(--av-bg-surface);
+}
+
+.any-viewer-view .any-viewer-stage .any-viewer-html-source {
+  height: 100%;
+}
+
+.any-viewer-html-source-code {
+  margin: 0;
+  padding: var(--av-space-3);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+  tab-size: 2;
+  color: var(--code-normal, var(--text-normal));
+  /* the markdown preview around embeds may center text — source reads left */
+  text-align: left;
+  direction: ltr;
+}
+
+/* zero-dependency highlighting (v0.6 T3.1): follow the theme's code palette */
+.any-viewer-html-source-code .tok-comment {
+  color: var(--code-comment, var(--av-text-tertiary));
+  font-style: italic;
+}
+.any-viewer-html-source-code .tok-doctype,
+.any-viewer-html-source-code .tok-tag {
+  color: var(--code-tag, var(--code-keyword, var(--text-accent)));
+}
+.any-viewer-html-source-code .tok-attr {
+  color: var(--code-attr, var(--code-property, var(--code-keyword, var(--text-accent))));
+}
+.any-viewer-html-source-code .tok-string {
+  color: var(--code-string, var(--code-property, var(--text-success, #16a34a)));
+}
+.any-viewer-html-source-code .tok-punct {
+  color: var(--code-punctuation, var(--av-text-tertiary));
 }
 
 .any-viewer-view .any-viewer-html-frame {
@@ -848,4 +1252,63 @@
   .any-viewer-tab,
   .any-viewer-sheet-table td { transition: none; }
   .any-viewer-loading::before { animation: none; }
+}
+
+/* ============================================================
+ * Part 3 — Style Settings form classes (v0.6 style-settings package)
+ * Everything here is opt-in via body.av-* classes; a bare install renders
+ * exactly like the pre-v0.6 stylesheet (zero-regression rule). These blocks
+ * only re-declare --av-* tokens — no !important, no host variable writes.
+ * ============================================================ */
+
+/* compact mode: tighter header, paddings and gaps. Intentionally does NOT
+   touch --av-control-height-* (coarse-pointer 44px targets stay intact). */
+body.av-compact :is(.any-viewer-embed, .any-viewer-view) {
+  --av-header-height: calc(var(--av-opt-header-height, 28) * 1px);
+  --av-stage-padding: calc(var(--av-opt-stage-padding, 8) * 1px);
+  --av-tab-gap: var(--av-space-1);
+  --av-card-padding: var(--av-space-2);
+  --av-header-padding-inline: var(--av-space-2);
+}
+
+/* overall corner radius: re-declare the semantic radii inside our scope only */
+body.av-radius-tight :is(.any-viewer-embed, .any-viewer-view) {
+  --av-radius-sm: var(--av-radius-xs);
+  --av-radius-md: var(--av-radius-xs);
+  --av-radius-lg: var(--av-radius-sm);
+  --av-embed-radius: var(--av-radius-xs);
+}
+
+body.av-radius-round :is(.any-viewer-embed, .any-viewer-view) {
+  --av-radius-sm: var(--av-radius-md);
+  --av-radius-md: var(--av-radius-lg);
+  --av-radius-lg: 16px;
+  --av-embed-radius: var(--av-radius-lg);
+}
+
+body.av-radius-square :is(.any-viewer-embed, .any-viewer-view) {
+  --av-radius-sm: 0;
+  --av-radius-md: 0;
+  --av-radius-lg: 0;
+  --av-embed-radius: 0;
+}
+
+/* flat embeds: drop the card shadow only — tab views have no card box */
+body.av-flat-embed .any-viewer-embed {
+  --av-embed-shadow: none;
+  --av-card-hover-shadow: none;
+}
+
+/* no zebra striping in spreadsheets */
+body.av-no-stripe :is(.any-viewer-embed, .any-viewer-view) {
+  --av-table-stripe: transparent;
+}
+
+/* custom file icon colors — gated: without body.av-custom-file-colors the
+   icons keep following the host theme palette (--color-*), never fixed hexes. */
+body.av-custom-file-colors :is(.any-viewer-embed, .any-viewer-view) {
+  --av-file-word: var(--av-opt-file-word, var(--color-blue, #3274c8));
+  --av-file-excel: var(--av-opt-file-excel, var(--color-green, #16865c));
+  --av-file-powerpoint: var(--av-opt-file-powerpoint, var(--color-orange, #c9632b));
+  --av-file-html: var(--av-opt-file-html, var(--color-cyan, #16869b));
 }
