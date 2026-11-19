@@ -30,13 +30,13 @@ export default class AnyViewerPlugin extends Plugin {
     this.app.workspace.trigger("parse-style-settings");
 
     // In-document search, registered as a real command so it appears under
-    // Settings → Hotkeys and users can rebind it. Default Mod+F mirrors the
-    // editor search muscle memory; in markdown editors the core editor search
-    // keeps its binding — this only fires inside Any Viewer tab views.
+    // Settings → Hotkeys and users can rebind it. NO default hotkey — the
+    // official review forbids shipping one; Mod+F is handled by a window
+    // listener in AnyViewerFileView instead, so the default muscle memory
+    // still works while the binding stays adjustable.
     this.addCommand({
       id: "search-in-document-view",
       name: "在文档中搜索",
-      hotkeys: [{ modifiers: ["Mod"], key: "f" }],
       checkCallback: (checking: boolean) => {
         const view = this.app.workspace.getActiveViewOfType(AnyViewerFileView);
         if (!view || !view.hasSearch()) return false;

@@ -14,7 +14,7 @@
 - **渲染走渲染器类**：每种格式一个 `FileRenderer` 子类（`src/renderers.ts`，内含 `RenderKind` 与 `kindForExt` 派发），声明 `selfScrolling` / `needsBinary`，在 `REGISTRY` 注册。`embed.ts` 只保留通用管线（header、loading、错误卡片、徽标）——**不要在 `renderFileInto` 里加按 kind 的 if/else 分派**。
 - **每格式一个模块**：`docx.ts` / `pptx.ts` / `sheet.ts` / `html.ts` 各自持有渲染实现与片段（pageRange/sheet/range/scrollToId）的落地逻辑；`fragment.ts` 是唯一的语法解析层。
 - **Obsidian 平台规范**（eslint 强制）：禁止 `el.style.xxx =` 直接赋值（用 CSS 类或 `el.setCssProps()`）；定时器/raf 用 `window.requestAnimationFrame` 等 window 前缀形式（弹窗窗口兼容）。
-- **隐藏 DOM 节点用 `any-viewer-hidden` 类**（`display:none !important`），不要移除节点——docx-preview/pptx-preview 内部持有索引。
+- **隐藏 DOM 节点用 `any-viewer-hidden` 类**（规则用双类 `.any-viewer-hidden.any-viewer-hidden` 抬高特异性实现 display:none，**不用 !important**——官方审评明令禁止），不要移除节点——docx-preview/pptx-preview 内部持有索引。
 
 ## 3. 工程流程
 

@@ -41,9 +41,11 @@ export class AnyViewerFileView extends FileView {
       if (this.file) void this.render(this.file);
     });
 
-    // Esc closes the search bar from anywhere in the view. Cmd/Ctrl+F is NOT
-    // intercepted here — it is a registered command (main.ts) so it shows up
-    // in Settings → Hotkeys and users can rebind it (2026-11-19 验收反馈).
+    // Mod/Cmd+F opens, Esc closes the in-document search bar. Mod+F lives on
+    // a window listener rather than a default command hotkey (the official
+    // review forbids shipping default hotkeys); the command registered in
+    // main.ts stays rebindable and opens the same bar. Both paths are
+    // idempotent. All handled on window so it works wherever focus sits.
     this.registerDomEvent(window, "keydown", (ev: KeyboardEvent) => {
       if (this.app.workspace.getActiveViewOfType(AnyViewerFileView) !== this) return;
       if (ev.key === "Escape" && this.search?.isOpen()) {
@@ -51,6 +53,11 @@ export class AnyViewerFileView extends FileView {
         // this branch covers Esc from anywhere else in the view
         ev.preventDefault();
         this.search.close();
+        return;
+      }
+      if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "f" && this.search) {
+        ev.preventDefault();
+        this.search.open();
       }
     });
   }

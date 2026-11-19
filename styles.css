@@ -603,9 +603,11 @@ settings:
   user-select: none;
 }
 
-/* Pages/slides hidden by a `#page=` fragment (docx sections, pptx slides) */
-.any-viewer-hidden {
-  display: none !important;
+/* Pages/slides hidden by a `#page=` fragment (docx sections, pptx slides).
+   Doubled class raises specificity above single-class display rules
+   (e.g. `.any-viewer-embed { display: block }`) without needing !important. */
+.any-viewer-hidden.any-viewer-hidden {
+  display: none;
 }
 
 .any-viewer-header-title.is-clickable:focus-visible,

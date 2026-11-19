@@ -32,12 +32,4 @@ export default defineConfig(
 		},
 	},
 	...obsidianmd.configs.recommended,
-	{
-		rules: {
-			// 默认热键豁免：「在文档中搜索」命令必须默认绑定 Mod+F——用户明确要求
-			// 快捷键出现在系统快捷键设置中且开箱即用；Markdown 编辑器场景下核心
-			// 编辑器搜索优先，本命令仅在 Any Viewer 标签页内生效，冲突面可控。
-			'obsidianmd/commands/no-default-hotkeys': 'off',
-		},
-	},
 );
