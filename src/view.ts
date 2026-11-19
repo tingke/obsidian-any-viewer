@@ -27,6 +27,8 @@ export class AnyViewerFileView extends FileView {
   /** Pane action-bar buttons whose tooltips follow the selected UI language. */
   private actSystemApp?: HTMLElement;
   private actReload?: HTMLElement;
+  /** Pane action-bar search toggle (visible entry point — the command has no default hotkey). */
+  private searchAction?: HTMLElement;
 
   constructor(leaf: WorkspaceLeaf, plugin: AnyViewerPlugin) {
     super(leaf);
@@ -137,6 +139,19 @@ export class AnyViewerFileView extends FileView {
       ? createSearchBar(() => this.contentEl.querySelector<HTMLElement>(".any-viewer-stage"), t(this.plugin.settings))
       : undefined;
     if (this.search) this.contentEl.appendChild(this.search.el);
+
+    // Pane action-bar search toggle: visible entry point for every kind that
+    // supports search — the registered command ships WITHOUT a default hotkey
+    // (official review forbids those), so this icon is the discoverable path.
+    if (searchSupported) {
+      const T = t(s);
+      this.searchAction ??= this.addAction("search", T.searchToggle, () => {
+        if (!this.search) return;
+        if (this.search.isOpen()) this.search.close();
+        else this.search.open();
+      });
+    }
+    this.searchAction?.toggleClass("any-viewer-hidden", !searchSupported);
 
     // HTML tab: source/reading toggle lives in the pane action bar (top-right,
     // next to "open with system app" — no header since M4). Added lazily once

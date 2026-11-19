@@ -42,6 +42,7 @@ type Dict = {
   // tab view outline (v0.6 M1) and in-document search (v0.6 M2)
   outlineTitle: string;
   searchPlaceholder: string;
+  searchToggle: string;
   searchPrev: string;
   searchNext: string;
   searchClose: string;
@@ -120,6 +121,7 @@ const zh: Dict = {
   fragmentHeadingBadge: (text) => `标题 ${text}`,
   outlineTitle: "大纲",
   searchPlaceholder: "查找…",
+  searchToggle: "搜索",
   searchPrev: "上一处 (Shift+Enter)",
   searchNext: "下一处 (Enter)",
   searchClose: "关闭搜索 (Esc)",
@@ -196,6 +198,7 @@ const en: Dict = {
   fragmentHeadingBadge: (text) => `Heading ${text}`,
   outlineTitle: "Outline",
   searchPlaceholder: "Find…",
+  searchToggle: "Search",
   searchPrev: "Previous match (Shift+Enter)",
   searchNext: "Next match (Enter)",
   searchClose: "Close search (Esc)",
