@@ -44,7 +44,7 @@
 
 ## 7. 上架（先发版，后送审）
 
-官方送审门禁要求 manifest 版本对应的 GitHub Release **已经发布**——审评扫描的就是 Release 附件，所以顺序是：发版 → 网页送审 → 照意见修改 → 升版本号发新版本 → 重新送审。（2026-11-12 实测：未发 Release 时送审直接被拒 "No release matches your manifest version"。）
+官方送审门禁要求 manifest 版本对应的 GitHub Release **已经发布**——审评扫描的就是 Release 附件，所以顺序不变：发版 → 网页送审 → 照意见修改 → 升版本号发新版本 → 重新送审。（2026-11-12 实测：未发 Release 时送审直接被拒 "No release matches your manifest version"。）但 error 的消化点前移了：推送 main 之后、打 tag 之前，先在开发者面板用 "Review branch" 对该 commit 跑官方预扫，干净了才发版——发一次版烧一个版本号，预扫不烧。
 
 每次上架前必跑官方 lint（与社区目录自动审核同源，脚本移植自 bz-reader 的 `scripts/lint-obsidian.mjs`）：
 
@@ -56,6 +56,7 @@ npm run lint:obsidian
 - 工具链装在仓库外 `~/Library/Caches/any-viewer-lint`（`ANY_VIEWER_LINT_HOME` 可覆盖），首次自动安装，不碰项目 `node_modules`，版本钉死不受 devDependencies 漂移影响。
 - eslint 配置由脚本临时生成到仓库根（`.eslint-obsidian.tmp.config.mjs`，已 gitignore），跑完自删——刻意区别于仓库自带的 `eslint.config.mjs`，清理不会碰它。需要豁免某条规则时在脚本 `writeTempConfig()` 里集中记录并写明理由。
 - 支持 `--fix` 自动修复。
+- 本地 lint 与线上自动审评**同源不同版**：本地工具链钉死，线上永远跑现行规则——本地 0/0 ≠ 线上干净，漂移部分由送审段第 7 步的 "Review branch" 预扫兜住。
 
 ### 送审段（只到推送为止）
 
@@ -65,7 +66,8 @@ npm run lint:obsidian
 4. 版本号三处同步：`manifest.json` / `package.json` / `versions.json`；
 5. 合规自查：`manifest.json` 与 `package.json` 的 description 不出现 "Obsidian"；`README.md` / `README.zh.md` 披露付费与联网；
 6. 提交并推送 main；
-7. 打 tag 并推送：`git tag <版本> && git push origin <版本>`——tag 与 `manifest.version` 逐字相同、**不带 `v`**；
-8. CI（`.github/workflows/release.yml`）自动构建、校验 tag = manifest.version、发布 Release（三件套 + 出处证明），**正文自动提取 CHANGELOG.md 对应版本小节**（CHANGELOG 缺小节则构建失败，强制文档同步）；`gh release view <版本>` 确认；
-9. 到 community.obsidian.md 网页提交送审（此时门禁校验 Release 已存在）；
-10. 审评不通过：照报错修改 → **升版本号**（如 0.5.1）→ 重复 1–8 发新版本 → 重新送审；审评通过即完成，无需额外操作。
+7. **开发者面板 "Review branch" 预扫**：对刚推送的 main（即待发 commit）跑一遍官方自动审评，error/warning 全部消化后才准打 tag——报错就修复 → `npm run verify` → 推送 → 重扫，循环到干净。预扫不消耗版本号，是把"送审不过重新发版"挡在前面的主要防线；
+8. 打 tag 并推送：`git tag <版本> && git push origin <版本>`——tag 与 `manifest.version` 逐字相同、**不带 `v`**；
+9. CI（`.github/workflows/release.yml`）自动构建、校验 tag = manifest.version、发布 Release（三件套 + 出处证明），**正文自动提取 CHANGELOG.md 对应版本小节**（CHANGELOG 缺小节则构建失败，强制文档同步）；`gh release view <版本>` 确认；
+10. 到 community.obsidian.md 网页提交送审（此时门禁校验 Release 已存在）；
+11. 审评不通过：照报错修改 → **升版本号**（如 0.5.1）→ 重复 1–9 发新版本（预扫照跑）→ 重新送审；预扫干净仍不过审 = 人工审意见或线上规则又更新，同样走升版本循环；审评通过即完成，无需额外操作。

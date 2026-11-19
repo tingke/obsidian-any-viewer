@@ -4,7 +4,12 @@ node_modules/
 package-lock.json.bak
 .ssh_tmp/
 smoke.cjs
-promo
+# marketing/research material stays out of the repo, EXCEPT the generated
+# demo assets referenced by the READMEs (raw.githubusercontent URLs) and the
+# script that generates them
+promo/*
+!promo/assets
+!promo/make_demo_gifs.py
 
 # main.js is intentionally tracked (BRAT installs from a branch; artifact
 # stays inspectable at repo root). This is a choice, NOT a review requirement —
